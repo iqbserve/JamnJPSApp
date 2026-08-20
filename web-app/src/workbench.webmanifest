@@ -1,0 +1,7 @@
+{
+  "name": "Jamn Workbench",
+  "short_name": "Jamn Workbench",
+  "description": "The Workbench App is an example of using plain Html and JavaScript to build an All-in-One RIA Application",
+  "display": "browser",
+  "scope": "/"
+}

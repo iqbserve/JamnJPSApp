@@ -1,0 +1,1 @@
+### /scripts - Folder for server side JavaScripts

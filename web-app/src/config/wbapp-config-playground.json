@@ -1,0 +1,26 @@
+{
+	"properties": {
+		"showIntro": false,
+		"autoStartFeature": "toolsJSPlayground"
+	},
+	"topicList": [
+		{
+			"text": "Tools",
+			"icon": "tools",
+			"items": [
+				{
+					"text": "JS Playground",
+					"feature": "toolsJSPlayground"
+				}
+			]
+		}
+	],
+	"workpanelItems": [
+		{
+			"text": "Login",
+			"id": "sidebar-icon-login",
+			"icon": "login",
+			"feature": "systemLogin"
+		}
+	]
+}

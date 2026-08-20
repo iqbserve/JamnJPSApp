@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>iqb.jps</groupId>
+	<artifactId>jaman-jpsapp-build-all</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>pom</packaging>
+
+	<!--
+	This pom is just used as a build all pom for the JPSApp project.
+	The main project module is the server-app module,
+	which contains the main application code and the executable jar build.
+	-->
+
+	<name>JPSApp Build All</name>
+	<description>Just a build all pom</description>
+	
+	<properties>
+		<java.version>25</java.version>
+	</properties>
+
+	<modules>
+		<module>server-app</module>
+		<module>sample</module>
+		<module>web-app</module>
+	</modules>
+
+</project>

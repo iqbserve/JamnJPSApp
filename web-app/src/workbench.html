@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en" style="cursor: wait">
+
+<!-- Jamn Workbench SPA initial page -->
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="description"
+    content="Jamn Microservice Example to build lightweight, browser enabled All-in-One Apps with Java-SE, plain Html and JavaScript.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Jamn Workbench</title>
+
+  <link rel="manifest" href="/workbench.webmanifest">
+  <!-- app main StyleSheet -->
+  <link rel="stylesheet" href="styles/workbench.css">
+
+  <!-- app optional start up utility -->
+  <script src="/app/startutility.js"></script>
+  <script>WbStartUtility.setAppRootId("approot");</script>
+
+  <!-- app module import mappings -->
+  <script type="importmap">
+    {
+        "imports": {
+            "app/": "/app/",
+            "config/": "/config/",
+            "core/": "/app/core/",
+            "features/": "/app/features/"
+        }
+    }
+  </script>
+
+  <!-- app installation -->
+  <script defer type="module">
+    import { installApp } from 'app/workbench.mjs';
+    installApp().build();
+  </script>
+
+  <!-- externals -->
+  <!-- bootstrap icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    integrity="sha256-9kPW/n5nn53j4WMRYAxe9c1rCY96Oogo/MKSVdKzPmI=" crossorigin="anonymous">
+  <!-- google material icons -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined">
+
+  <!-- visual code monaco editor -->
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs/loader.js"
+    integrity="sha256-NbWd+AtBqLc78c6xWbRPBAVnwqtT9Od6PQAtncOdVdE=" crossorigin="anonymous"></script>
+
+</head>
+
+<body>
+
+  <!-- approot -->
+  <main id="approot" class="site-container">
+
+    <!-- titlebar component -->
+    <wb-titlebar id="app-titlebar"></wb-titlebar>
+    <!-- end titlebar -->
+
+    <!-- main container -->
+    <div id="app-main-container">
+
+      <!-- sidebar component -->
+      <wb-sidebar id="app-sidebar"></wb-sidebar>
+      <!-- end sidebar -->
+
+      <div id="app-sidebar-splitter" class="splitter vsplit"></div>
+
+      <!-- workarea -->
+      <div id="app-workarea"></div>
+      <!-- end workarea -->
+
+    </div>
+    <!-- end main container -->
+
+    <!-- statusline component -->
+    <wb-statusline id="app-statusline"></wb-statusline>
+    <!-- end statusline -->
+
+    <!-- intro text box -->
+    <div id="app-intro-overlay" class="overlay-container intro-container">
+      <div id="app-intro-content" class="intro-content">
+      </div>
+    </div>
+    <!-- end intro text box -->
+
+  </main>
+  <!-- end approot -->
+
+</body>
+
+</html>

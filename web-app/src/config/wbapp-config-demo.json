@@ -1,0 +1,62 @@
+{
+	"properties": {
+		"noLoginHint": "Authentication is disabled in puplic Demo mode"
+	},
+	"topicList": [
+		{
+			"text": "System",
+			"icon": "gi_system",
+			"items": [
+				{
+					"text": "Infos",
+					"feature": "systemInfos"
+				},
+				{
+					"text": "Login",
+					"id": "sidebar-item-login",
+					"feature": "systemLogin"
+				}
+			]
+		},
+		{
+			"text": "Tools",
+			"icon": "tools",
+			"items": [
+				{
+					"text": "DB Connections",
+					"feature": "toolsDBConnections"
+				},
+				{
+					"text": "JS Playground",
+					"feature": "toolsJSPlayground"
+				}
+			]
+		},
+		{
+			"text": "Server Commands",
+			"icon": "command",
+			"items": [
+				{
+					"text": "Sample: shell script",
+					"feature": "cmdSampleShellCall"
+				},
+				{
+					"text": "Sample: java extension",
+					"feature": "cmdSampleExtension"
+				},
+				{
+					"text": "Sample: build script",
+					"feature": "cmdSampleBuildProject"
+				}
+			]
+		}
+	],
+	"workpanelItems": [
+		{
+			"text": "Login",
+			"id": "sidebar-icon-login",
+			"icon": "login",
+			"feature": "systemLogin"
+		}
+	]
+}

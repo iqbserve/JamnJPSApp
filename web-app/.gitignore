@@ -1,0 +1,8 @@
+# Files and directories #
+**/node
+**/node_modules
+**/assets/js
+**/dist
+**/.vscode
+**/.sonarlint
+**/package-lock.json

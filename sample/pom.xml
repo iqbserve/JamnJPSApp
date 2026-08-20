@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>iqb.jps.sample</groupId>
+	<artifactId>jpsapp-sample-project</artifactId>
+    <packaging>pom</packaging>
+	<version>0.0.1-SNAPSHOT</version>
+
+	<name>JPSApp Sample Project</name>
+	<description>Jamn Personal Server App samples.</description>
+	<url>https://github.com/iqbserve/JamnJPSApp</url>
+
+	<properties>
+		<jpsapp.artefactid>jamn-JPSApp</jpsapp.artefactid>
+		<jpsapp.version>0.0.1-SNAPSHOT</jpsapp.version>
+		<java.version>25</java.version>
+
+		<jps.extensions.bin>../../server-app/app/extensions/bin</jps.extensions.bin>
+				
+		<junit.jupiter.version>6.0.3</junit.jupiter.version>
+		<maven.surefire.plugin.version>3.5.4</maven.surefire.plugin.version>
+
+		<maven.compiler.plugin.version>3.15.0</maven.compiler.plugin.version>
+		<maven.source.plugin.version>3.3.1</maven.source.plugin.version>
+		<maven.antrun.plugin.version>3.2.0</maven.antrun.plugin.version>
+
+		<maven.compiler.source>${java.version}</maven.compiler.source>
+		<maven.compiler.target>${java.version}</maven.compiler.target>
+	    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+	
+	<modules>
+		<module>command-extension</module>
+		<module>dbconnections-extension</module>
+		<module>jsplayground-extension</module>
+	</modules>
+
+</project>

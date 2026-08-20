@@ -1,0 +1,42 @@
+{
+	"folders": [
+		{
+			"path": "./"
+		}
+	],
+	"launch": {
+		"configurations": [
+			{
+				"type": "java",
+				"name": "App over Launcher in workspace",
+				"request": "launch",
+				"console": "internalConsole",
+				"cwd": "./server-app/app",
+				"mainClass": "iqb.jps.boot.ApplicationLauncher",
+				"projectName": "jamn-JPSApp"
+			},
+			{
+				"type": "java",
+				"name": "Launcher from JAR",
+				"request": "launch",
+				"cwd": "${workspaceFolder}/server-app/app",
+				"mainClass": "iqb.jps.boot.ApplicationLauncher",
+				"projectName": "jamn-JPSApp",
+				"classPaths": [
+					"${workspaceFolder}/server-app/app/target/jamn-JPSApp-0.0.1-SNAPSHOT.jar"
+				]
+			}
+		]
+	},
+	"settings": {
+		"java.configuration.updateBuildConfiguration": "automatic",
+		"java.debug.settings.forceBuildBeforeLaunch": false,
+		"maven.view": "hierarchical",
+		"maven.terminal.favorites": [
+			{
+				"alias": "Clean-install",
+				"command": "clean install"
+			}
+		]
+	}
+}

@@ -1,0 +1,18 @@
+{
+  "name": "jps-workbench",
+  "version": "0.0.1-SNAPSHOT",
+  "description": "Experimental Web App project",
+  "homepage": "https://github.com/iqbserve/JamnJPSApp/tree/master/web-app",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.2.0",
+    "globals": "^17.5.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.58.1"
+  },
+  "scripts": {
+    "build": "tsc && node copy-assets.mjs cp",
+    "lint": "npx eslint",
+    "cp": "node copy-assets.mjs cp"
+  }
+}
