@@ -11,11 +11,55 @@ export const version = "0.0.1";
 export const LS = HostApp.ls()
 
 /**
+ * see: OperatingSystemInterface.CmdDef
+ */
+export class ShellCmd {
+	#command = "";
+	#workDir = "";
+	#outputConsumer = null;
+	#env = {};
+
+	constructor(cmd) {
+		this.#command = cmd;
+	}
+
+	command(command) {
+		this.#command = command;
+		return this;
+	}
+
+	workDir(workDir) {
+		this.#workDir = workDir;
+		return this;
+	}
+
+	outputConsumer(outputConsumer) {
+		this.#outputConsumer = outputConsumer;
+		return this;
+	}
+
+	env(env) {
+		this.#env = env;
+		return this;
+	}
+
+	run() {
+		return sh(this.#command, this.#workDir, this.#outputConsumer, this.#env);
+	}
+}
+
+/** 
+ */
+export function shCmd (command){
+	return new ShellCmd(command);
+};
+
+/**
  * call command in os shell
  * e.g. a os command or a shell script
  */
-export function sh(command, workDir = "", outputConsumer = null) {
-	let result = HostApp.shellCmd(command, workDir, outputConsumer);
+export function sh(command, workDir = "", outputConsumer = null, envVars = {}) {
+	let result = HostApp.shellCmd(command, workDir, outputConsumer, envVars);
 	//convert java type List to javaScript type array
 	return Java.from(result);
 };

@@ -14,35 +14,62 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
+/**
+ * <pre>
+ * A generic resource file cache that loads files from a specified source folder.
+ * 
+ * Supports loading resources from both the filesystem and JAR files.
+ * The cache is used by the JamnServer.WebContentProvider as a file system abstraction.
+ * 
+ * The cache also supports a user root folder for user local development, extensions or customizations.
+ * </pre>
+ */
 public class ResourceFileCache<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ResourceFileCache.class);
 
+    // cache to store loaded resource files of type <T>
     private final ConcurrentHashMap<String, T> fileCache = new ConcurrentHashMap<>();
 
-    private boolean loadOnStartup = false;
     private FileSystem fileSystem;
 
     private String sourceFolder;
+    private String userSourceFolder;
+    // supplier factory function to create T objects from file content
     private BiFunction<String, byte[], T> cacheObjctSupplier;
     private String httpPrefix = "/";
     private Path rootPath;
+    private Path userRootPath = null;
+
+    private boolean loadOnStartup = false;
     private boolean isFromJar = false;
+    private boolean cachingEnabled = true;
+    private boolean userRootEnabled = false;
 
     /**
+     * Constructs a new ResourceFileCache.
+     *
+     * @param cacheObjctSupplier a factory function to create T objects from file
+     *                           content
+     * @param appConfig          the application configuration object
      */
-    public ResourceFileCache(String sourceFolder, BiFunction<String, byte[], T> cacheObjctSupplier,
-            boolean loadOnStartup) throws URISyntaxException, IOException {
-        this.sourceFolder = sourceFolder;
+    public ResourceFileCache(BiFunction<String, byte[], T> cacheObjctSupplier,
+            AppConfig appConfig) throws URISyntaxException, IOException {
+        this.sourceFolder = appConfig.getWebRoot();
+        this.loadOnStartup = appConfig.webCacheLoadOnStartup();
+        this.cachingEnabled = appConfig.webCacheCachingEnabled();
+        this.userSourceFolder = appConfig.getUserWebLocalRoot();
         this.cacheObjctSupplier = cacheObjctSupplier;
-        this.loadOnStartup = loadOnStartup;
+
         initialize();
 
         if (loadOnStartup) {
-            loadAllResources();
-        } else {
-            LOG.info("Resource file cache is set to load on demand [{}]", rootPath.toUri());
+            doStartupLoad();
         }
+        LOG.info("Resource cache initialization done: enabled: [{}] startload: [{}] system-root: [{}] user-root: [{}]",
+                cachingEnabled,
+                loadOnStartup, rootPath.toUri(), userRootPath != null ? userRootPath.toUri() : "none");
+
     }
 
     /**
@@ -60,7 +87,7 @@ public class ResourceFileCache<T> {
     public T getResource(String path) throws IOException {
         T resource = fileCache.get(path);
         if (resource == null) {
-            if (loadOnStartup) {
+            if (loadOnStartup && cachingEnabled) {
                 throw new FileNotFoundException("Resource file not found in cache: " + path);
             }
             resource = loadResource(path);
@@ -80,7 +107,7 @@ public class ResourceFileCache<T> {
     /**
      * Loads all resources from the root folder into the cache.
      */
-    private void loadAllResources() throws IOException {
+    private void doStartupLoad() throws IOException {
 
         if (!loadOnStartup) {
             throw new IllegalStateException("Cannot load all resources when loadOnStartup is [false]");
@@ -104,7 +131,7 @@ public class ResourceFileCache<T> {
                 fileSystem.close();
             }
         }
-        LOG.info("Loaded {} resource files into cache from [{}]", fileCache.size(), rootPath.toUri());
+        LOG.info("Loaded [{}] System resource files into cache", fileCache.size());
     }
 
     /**
@@ -112,19 +139,58 @@ public class ResourceFileCache<T> {
      */
     private T loadResource(String resourceName) throws IOException {
 
+        T resource = null;
+
+        // first try user resource if enabled
+        resource = loadUserResource(resourceName);
+        if (resource != null) {
+            return resource;
+        }
+
+        // else do standard lookup
         Path filePath = rootPath.resolve(
                 resourceName.startsWith(httpPrefix) ? resourceName.substring(1) : resourceName);
         byte[] content = Files.readAllBytes(filePath);
         String httpKey = httpPrefix + rootPath.relativize(filePath).toString().replace("\\", "/");
 
-        T resource = cacheObjctSupplier.apply(httpKey, content);
-        fileCache.put(httpKey, resource);
+        resource = cacheObjctSupplier.apply(httpKey, content);
+
+        if (cachingEnabled) {
+            fileCache.put(httpKey, resource);
+        }
         return resource;
+    }
+
+    /**
+     * If user root path is defined, loads a single user resource file.
+     */
+    private T loadUserResource(String resourceName) throws IOException {
+
+        if (userRootEnabled) {
+            Path userFilePath = userRootPath.resolve(
+                    resourceName.startsWith(httpPrefix) ? resourceName.substring(1) : resourceName);
+            // existence must be checked,
+            // because user root is called first and may not contain any files
+            if (Files.exists(userFilePath) && Files.isRegularFile(userFilePath)) {
+                byte[] content = Files.readAllBytes(userFilePath);
+                String httpKey = httpPrefix + userRootPath.relativize(userFilePath).toString().replace("\\", "/");
+
+                T resource = cacheObjctSupplier.apply(httpKey, content);
+                if (cachingEnabled) {
+                    fileCache.put(httpKey, resource);
+                }
+                return resource;
+            }
+        }
+        return null;
     }
 
     /**
      */
     private void initialize() throws URISyntaxException, IOException {
+
+        initUserRootPath();
+
         URL resourceUrl = getClass().getClassLoader().getResource(sourceFolder);
         if (resourceUrl == null) {
             Path externalPath = Paths.get(sourceFolder);
@@ -153,4 +219,30 @@ public class ResourceFileCache<T> {
         }
     }
 
+    /**
+     * Initializes the user root path if a user source folder is defined in the
+     * configuration.
+     * If defined first resource lookup is in the user root.
+     */
+    private void initUserRootPath() {
+
+        userRootPath = null;
+        userRootEnabled = false;
+
+        if (userSourceFolder != null && !userSourceFolder.trim().isEmpty()) {
+            Path userPath = null;
+            if (userSourceFolder.startsWith("/")) {
+                userPath = Paths.get(userSourceFolder);
+            } else {
+                userPath = Paths.get(Paths.get("").toString(), userSourceFolder);
+            }
+
+            if (Files.exists(userPath) && Files.isDirectory(userPath)) {
+                userRootPath = userPath;
+                userRootEnabled = true;
+            } else {
+                LOG.warn("Defined User Web root path does not exist: [{}]", userPath);
+            }
+        }
+    }
 }

@@ -2,27 +2,26 @@
     "compilerOptions": {
         "target": "ES2022",
         "module": "esnext",
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "allowJs": true,
         "checkJs": false,
         "outDir": "../server-app/app/http",
         "rootDir": "./src",
-        "baseUrl": "./src",
         "paths": {
             "app/*": [
-                "app/*"
+                "./src/app/*"
             ],
             "config/*": [
-                "config/*"
+                "./src/config/*"
             ],
             "core/*": [
-                "app/core/*"
+                "./src/app/core/*"
             ],
             "features/*": [
-                "app/features/*"
+                "./src/app/features/*"
             ],
             "types/*": [
-                "types/*"
+                "./src/types/*"
             ]
         }
     },

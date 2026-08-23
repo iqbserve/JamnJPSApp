@@ -856,16 +856,16 @@ public class WebSocketProvider implements ContentProvider {
         public void onMessage(byte[] message, WsoConnection connection);
 
         /**
-         * <pre>
-         * experimental
-         * default is - to stop the socket listening loop on any exception
-         * </pre>
          */
         public default boolean onConnectionError(byte[] message, WsoConnection connection, Exception exp){
-            LOG.error("WebSocket Connection ERROR:", exp);
-            return false; //false = stop socket listening
+            // abrupt client-side disconnects (browser reload/close) surface as SocketException - expected, not an error
+            if (exp instanceof java.net.SocketException) {
+                LOG.atDebug().log("WebSocket connection closed by client [{}]: {}", connection.geConnectiontId(), exp.getMessage());
+            } else {
+                LOG.error("WebSocket Connection ERROR:", exp);
+            }
+            return false; //false = stop socket listening loop
         }
-
     }
 
     /**

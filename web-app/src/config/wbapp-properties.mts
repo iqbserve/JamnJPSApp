@@ -32,6 +32,11 @@ class Properties {
             onLoad: 'check-sso', //'check-sso' 'login-required'
             checkLoginIframe: false, // Optional: Turn off iframe check if 3rd party cookie issues
             tokenRefreshInterval: 4 * 60 * 1000 // every 4 minutes
+        },
+
+        links: {
+            homePage: "https://www.iqbserve.de",
+            DBConnectionExtension: "https://github.com/iqbserve/JamnJPSApp/blob/master/sample/dbconnections-extension/src/main/java/iqb/jps/sample/DBConnectionExtension.java"
         }
     };
 

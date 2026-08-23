@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -112,26 +113,14 @@ public class JamnServer {
     protected URI serverURI = null;
     protected ExecutorService requestExecutor = null;
     protected RequestProcessor requestProcessor = null;
+    protected Semaphore connectionLimiter = null;
 
-    public JamnServer() {
-        // default port in config is: 8099
-        initialize();
-    }
-
+    /**
+     */
     public JamnServer(AppConfig config) {
         // default port in config is: 8099
         this.config = config;
         initialize();
-    }
-
-    /**
-     * Just for running in development
-     */
-    public static void main(String[] args) { //NOSONAR
-        JamnServer server = new JamnServer();
-        // enable all CORS - simplification for using Testfiles in a browser
-        server.getConfig().setAllowAllCORSEnabled(true);
-        server.start();
     }
 
     /**
@@ -190,8 +179,11 @@ public class JamnServer {
         }
 
         if (requestExecutor == null || requestExecutor.isShutdown()) {
-            requestExecutor = Executors.newFixedThreadPool(config.getHttpWorkerNumber());
+            // one client socket blocks its task for the whole connection lifetime (incl. WebSocket) - virtual threads avoid worker starvation
+            requestExecutor = Executors.newVirtualThreadPerTaskExecutor();
         }
+        // virtual threads are unbounded - cap concurrently open connections explicitly
+        connectionLimiter = new Semaphore(config.getHttpMaxConnections());
         serverSocket = createServerSocket();
         determineServerURI(serverSocket);
 
@@ -329,6 +321,15 @@ public class JamnServer {
 
                     final Socket clientSocket = activeSocket.accept();
 
+                    // blocks the accept loop while at the connection limit - applies natural backpressure
+                    try { //NOSONAR
+                        connectionLimiter.acquire();
+                    } catch (InterruptedException _) {
+                        Thread.currentThread().interrupt();
+                        clientSocket.close();
+                        continue;
+                    }
+
                     // start request execution in its own thread
                     requestExecutor.execute(() -> {
                         Map<String, String> comData = HashMap.newHashMap(5);
@@ -357,6 +358,8 @@ public class JamnServer {
                             }
                         } catch (IOException _) {
                             // nothing to do
+                        } finally {
+                            connectionLimiter.release();
                         }
                     });
                 }
@@ -457,6 +460,8 @@ public class JamnServer {
         protected String encoding = StandardCharsets.UTF_8.name();
         protected boolean keepAliveEnabled = false;
         protected boolean isHttpAllowAllCORSEnabled = false;
+        protected int maxHeaderSize;
+        protected int maxContentLength;
 
         /**
          */
@@ -465,6 +470,8 @@ public class JamnServer {
             this.encoding = config.getHttpEncoding();
             this.keepAliveEnabled = config.isHttpConnectionKeepAlive();
             this.isHttpAllowAllCORSEnabled = config.isHttpAllowAllCORSEnabled();
+            this.maxHeaderSize = config.getHttpMaxHeaderSize();
+            this.maxContentLength = config.getHttpMaxContentLength();
         }
 
         // the available ContentProvider
@@ -501,7 +508,7 @@ public class JamnServer {
          * </pre>
          */
         @Override
-        public void handleRequest(Socket socket, Map<String, String> comData) throws IOException {
+        public void handleRequest(Socket socket, Map<String, String> comData) throws IOException { //NOSONAR
 
             String socketIDText = String.format("ClientSocket [%s]", socket.hashCode());
             comData.put(SOCKET_IDTEXT, socketIDText);
@@ -567,6 +574,9 @@ public class JamnServer {
             } catch (SecurityException _) {
                 // send 403 for any security exception
                 response.sendStatus(Status.SC_403_FORBIDDEN);
+            } catch (HttpRequestTooLargeException e) {
+                LOG.warn(String.format("%s %s", socketIDText, e.getMessage()));
+                response.sendStatus(e.getHttpStatus());
             } catch (Exception e) {
                 LOG.error(String.format("Request handling internal ERROR: %s", socketIDText), e);
                 // send 500 for any other exception
@@ -665,8 +675,12 @@ public class JamnServer {
             ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
             do {
                 if ((curByte = inStream.read()) == -1) {
-                    break; // end of stream, because inStream.available() may ? not
-                           // be reliable enough
+                    break; // end of stream
+                }
+                if (byteBuffer.size() >= maxHeaderSize) {
+                    throw new HttpRequestTooLargeException(
+                            String.format("Http header exceeds max size [%s]", maxHeaderSize),
+                            Status.SC_431_HEADER_TOO_LARGE);
                 }
 
                 if (curByte == 13) { // CR
@@ -683,7 +697,8 @@ public class JamnServer {
                         headerEndFlag--;
                     }
                 }
-            } while (headerEndFlag < 2 && inStream.available() > 0);
+                // relies solely on the blocking read above (and the socket timeout) - available() is unreliable for end-of-header detection
+            } while (headerEndFlag < 2);
 
             bytes = byteBuffer.toByteArray();
             return new String(bytes, this.encoding).trim();
@@ -701,28 +716,32 @@ public class JamnServer {
          * </pre>
          */
         protected String readBody(InputStream inStream, int contentLength, String encoding) throws IOException {
-            ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
-            int byteVal = 0;
-            int actual = 0;
-            int available = 0;
-
-            if (contentLength > 0) {
-                while ((available = inStream.available()) > 0 || actual < contentLength) {
-                    actual++;
-                    byteVal = inStream.read();
-                    if (byteVal == -1) {
-                        break;
-                    }
-                    byteBuffer.write(byteVal);
-                }
-                if (actual != contentLength || available > 0) {
-                    String msg = String.format("Http body read: actual [%s] header [%s] available [%s]", actual,
-                            contentLength,
-                            available);
-                    LOG.warn(msg);
-                }
+            if (contentLength <= 0) {
+                return "";
             }
-            return new String(byteBuffer.toByteArray(), encoding);
+            if (contentLength > maxContentLength) {
+                throw new HttpRequestTooLargeException(
+                        String.format("Http body content length [%s] exceeds max [%s]", contentLength,
+                                maxContentLength),
+                        Status.SC_413_PAYLOAD_TOO_LARGE);
+            }
+
+            // bulk read into a correctly sized buffer - avoids per-byte synchronized calls and over-reading into the next keep-alive request
+            byte[] body = new byte[contentLength];
+            int actual = 0;
+            int readLen;
+            while (actual < contentLength) {
+                readLen = inStream.read(body, actual, contentLength - actual);
+                if (readLen == -1) {
+                    break;
+                }
+                actual += readLen;
+            }
+            if (actual != contentLength) {
+                LOG.warn("Http body read: actual [{}] expected [{}]", actual, contentLength);
+                body = Arrays.copyOf(body, actual);
+            }
+            return new String(body, encoding);
         }
 
         /**
@@ -743,14 +762,22 @@ public class JamnServer {
                     fields.putAll(parseHttpHeaderStatusLine(line));
                 } else if (line.contains(":")) {
                     parts = line.split(":");
+                    String key = null;
+                    String value = null;
                     if (parts.length == 2) {
-                        fields.put(parts[0].trim(), parts[1].trim());
+                        key = parts[0].trim();
+                        value = parts[1].trim();
                     } else if (parts.length > 2) {
+                        key = parts[0].trim();
                         val = new StringBuilder(parts[1].trim());
                         for (int k = 1; k + 1 < parts.length; k++) {
                             val.append(":").append(parts[k + 1].trim());
                         }
-                        fields.put(parts[0].trim(), val.toString());
+                        value = val.toString();
+                    }
+                    if (key != null) {
+                        // RFC 7230 3.2.2 - repeated header fields are combined, not overwritten
+                        fields.merge(key, value, (existing, added) -> existing + ", " + added);
                     }
                 }
             }
@@ -880,6 +907,8 @@ public class JamnServer {
             public static final String SC_404_NOT_FOUND = "404";
             public static final String SC_405_METHOD_NOT_ALLOWED = "405";
             public static final String SC_408_TIMEOUT = "408";
+            public static final String SC_413_PAYLOAD_TOO_LARGE = "413";
+            public static final String SC_431_HEADER_TOO_LARGE = "431";
             public static final String SC_500_INTERNAL_ERROR = "500";
 
             public static final Map<String, String> TEXT;
@@ -896,6 +925,8 @@ public class JamnServer {
                 map.put("406", "Not Acceptable");
                 map.put("408", "Request Timeout");
                 map.put("411", "Length Required");
+                map.put("413", "Payload Too Large");
+                map.put("431", "Request Header Fields Too Large");
                 map.put("500", "Internal Server Error");
                 map.put("503", "Service Unavailable");
                 TEXT = Collections.unmodifiableMap(map);
@@ -1564,5 +1595,22 @@ public class JamnServer {
             super(msg);
         }
 
+    }
+
+    /**
+     * Thrown when a request header or body exceeds the configured size limit.
+     */
+    public static class HttpRequestTooLargeException extends IOException {
+        private static final long serialVersionUID = 1L;
+        private final String httpStatus;
+
+        public HttpRequestTooLargeException(String msg, String httpStatus) {
+            super(msg);
+            this.httpStatus = httpStatus;
+        }
+
+        public String getHttpStatus() {
+            return httpStatus;
+        }
     }
 }

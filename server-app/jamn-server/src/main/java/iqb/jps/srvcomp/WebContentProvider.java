@@ -7,8 +7,6 @@ import iqb.jps.JamnServer.HttpHeader.Status;
 import iqb.jps.JamnServer.MimeType;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.function.BiFunction;
 
 import org.slf4j.Logger;
@@ -29,10 +27,8 @@ public class WebContentProvider implements JamnServer.ContentProvider {
     protected static HelperTool Tool = HelperTool.getInstance();
     protected static Logger LOG = LoggerFactory.getLogger(WebContentProvider.class);
 
-    protected String webroot;
     protected BiFunction<String, RequestMessage, String> pathMapper = (path, request) -> path;
     protected ResourceFileCache<WebFile> resourceCache = null;
-    protected boolean useResourceCache = false;
 
     protected WebContentProvider() {
     }
@@ -43,17 +39,6 @@ public class WebContentProvider implements JamnServer.ContentProvider {
     public WebContentProvider(ResourceFileCache<WebFile> webAppResourceCache) {
         this();
         resourceCache = webAppResourceCache;
-        useResourceCache = true;
-    }
-
-    /**
-     * Constructor for serving non cached web content from a root file path.
-     */
-    public WebContentProvider(String root) {
-        this();
-        webroot = root;
-        useResourceCache = false;
-        LOG.warn("WebContentProvider initialized at webroot [{}] NO resource cache installed", webroot);
     }
 
     /**
@@ -98,20 +83,6 @@ public class WebContentProvider implements JamnServer.ContentProvider {
     }
 
     /**
-     * Interface for app internal use to get web files.
-     * The requestPath is expected to be "/.../<filename>.<ext> e.g. /index.html".
-     */
-    public byte[] getWebFileData(String requestPath) throws IOException {
-        if (useResourceCache) {
-            WebFile webFile = resourceCache.getResource(requestPath);
-            return webFile.getData();
-        } else {
-            String filePath = getFilePathFor(requestPath);
-            return Files.readAllBytes(Paths.get(filePath));
-        }
-    }
-
-    /**
      */
     protected WebFile getWebFile(RequestMessage request, ResponseMessage response)
             throws WebContentException {
@@ -121,13 +92,7 @@ public class WebContentProvider implements JamnServer.ContentProvider {
         decodedPath = pathMapper.apply(decodedPath, request);
 
         try {
-            if (useResourceCache) {
-                webFile = resourceCache.getResource(decodedPath);
-            } else {
-                String filePath = getFilePathFor(decodedPath);
-                webFile = newWebFile(decodedPath, Files.readAllBytes(Paths.get(filePath)));
-                webFile.setFilePath(filePath);
-            }
+            webFile = resourceCache.getResource(decodedPath);
             response.setContentType(webFile.getContentType());
         } catch (Exception e) {
             throw new WebContentException(Status.SC_404_NOT_FOUND,
@@ -138,18 +103,22 @@ public class WebContentProvider implements JamnServer.ContentProvider {
     }
 
     /**
+     * Interface for app internal use to get web files.
+     * The requestPath is expected to be "/.../<filename>.<ext> e.g. /index.html".
+     */
+    public byte[] getWebFileData(String requestPath) throws IOException {
+        WebFile webFile = resourceCache.getResource(requestPath);
+        return webFile.getData();
+    }
+
+    /**
+     * Factory method to create a WebFile object from a path and byte array.
      */
     public static WebFile newWebFile(String path, byte[] data) {
         WebFile webFile = new WebFile(path);
         webFile.setContentType(MimeType.getFromPath(path));
         webFile.setData(data);
         return webFile;
-    }
-
-    /**
-     */
-    protected String getFilePathFor(String requestPath) {
-        return new StringBuilder(webroot).append(requestPath).toString();
     }
 
     /**
@@ -162,17 +131,6 @@ public class WebContentProvider implements JamnServer.ContentProvider {
     /*********************************************************
      * Provider classes and interfaces.
      *********************************************************/
-
-    /**
-     * File cache abstraction.
-     */
-    public static interface FileCache {
-        void put(String key, WebFile file);
-
-        boolean contains(String key);
-
-        WebFile get(String key);
-    }
 
     /**
      */

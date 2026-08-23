@@ -41,7 +41,7 @@ import iqb.jps.srvcomp.WebSocketProvider;
 import iqb.jps.webapi.WebAppConfigService;
 import iqb.jps.wsoapi.RunExtensionTaskProcessor;
 import iqb.jps.wsoapi.RunJavaScriptTaskProcessor;
-import iqb.jps.wsoapi.base.WsoMessageHandler;
+import iqb.jps.wsoapi.base.WsoMessageDispatcher;
 
 /**
  * <pre>
@@ -77,7 +77,7 @@ public class JPSApp {
     private WebContentProvider webContentProvider = null;
     private WebServiceProvider webServiceProvider = null;
     private WebSocketProvider webSocketProvider = null;
-    private WsoMessageHandler wsoMessageHandler = null;
+    private WsoMessageDispatcher wsoMessageDispatcher = null;
     private ExtensionHandler extensionHandler = null;
 
     private Optional<JavaScriptProvider> javaScript = Optional.empty();
@@ -218,11 +218,9 @@ public class JPSApp {
     /**
      */
     private void initContentProvider() throws IOException, URISyntaxException {
-        String webRoot = appConfig.getWebRoot();
 
         // create a file cache for the web content provider
-        ResourceFileCache<WebFile> resourceCache = new ResourceFileCache<WebFile>(webRoot,
-                WebContentProvider::newWebFile, appConfig.webCacheLoadOnStartup());
+        ResourceFileCache<WebFile> resourceCache = new ResourceFileCache<WebFile>(WebContentProvider::newWebFile, appConfig);
 
         // create provider
         webContentProvider = new WebContentProvider(resourceCache);
@@ -239,7 +237,7 @@ public class JPSApp {
         // add the provider to server
         server.addContentProvider(ContentProvider.WEB_CONTENT, webContentProvider);
         LOG.info("Web Content provider [{}] installed at [{}]", webContentProvider.getClass().getSimpleName(),
-                webRoot);
+                appConfig.getWebRoot());
     }
 
     /**
@@ -262,8 +260,8 @@ public class JPSApp {
                 .addConnectionPath(appConfig.getWebSocketUrlRoot())
                 .setMaxUpStreamPayloadSize(appConfig.getWebSocketMaxUpstreamSize());
 
-        wsoMessageHandler = new WsoMessageHandler(jsonTool, appConfig);
-        webSocketProvider.addMessageProcessor(wsoMessageHandler);
+        wsoMessageDispatcher = new WsoMessageDispatcher(jsonTool, appConfig);
+        webSocketProvider.addMessageProcessor(wsoMessageDispatcher);
 
         server.addContentProvider(ContentProvider.WEB_SOCKET, webSocketProvider);
 
@@ -337,13 +335,13 @@ public class JPSApp {
             }
 
             if (!errors.isEmpty()) {
-                String msg = String.format("Extension installation error(s): %s", errors);
+                String msg = String.format("Extension installation error(s): %s - Hint: check the 'extensions-auto-load.json' file and ensure that all DEF filenames are written in lowercase", errors);
                 LOG.error(msg);
             }
 
-            LOG.info("Extensions installed");
+            LOG.info("Extensions from autoload file installed [{}]", autoLoadList.size());
         } catch (Exception e) {
-            throw new UncheckedAppException("Error installing extensions", e);
+            throw new UncheckedAppException("Error installing autoload extensions", e);
         }
     }
 
@@ -354,7 +352,7 @@ public class JPSApp {
 
         loadExtensions();
 
-        wsoMessageHandler
+        wsoMessageDispatcher
                 .addTaskProcessor(new RunJavaScriptTaskProcessor(javaScript))
                 .addTaskProcessor(new RunExtensionTaskProcessor(extensionHandler));
 

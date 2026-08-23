@@ -57,7 +57,9 @@ public class AppConfig {
             "##",
             "## " + " Server Config Properties",
             "##", "",
-            "#Max HTTP worker threads", "http.worker=5", "",
+            "#Max concurrent HTTP/WebSocket connections", "http.max.connections=200", "",
+            "#Max HTTP header size in bytes", "http.max.header.size=16384", "",
+            "#Max HTTP request body size in bytes", "http.max.content.length=5242880", "",
             "#Socket timeout in millis", "http.client.socket.timeout=500", "",
             "#Use Connection:keep-alive header", "http.connection.keep.alive=true", "",
             "#Http encoding", "http.encoding=" + StandardCharsets.UTF_8.name(), "",
@@ -72,14 +74,17 @@ public class AppConfig {
     private static final String DEFAULT_CONFIG = String.join("\n",
             "#Profile", "jps.profile" + "=app", "",
             "#HTTP Server port", "http.server.port=9090", "",
-            "#Web files root folder\n#(no drive letter, start with '/' = absolute path)", "jps.web.root=" + WEB_FILE_ROOT, "",
+            "#System Web files root folder\n#intended for the system web app\n#no drive letter, start with '/' = absolute path, else relative to jar or to start folder\n#e.g. http", "jps.web.root=" + WEB_FILE_ROOT, "",
+            "#User Web files local folder\n#intended for a user of a packed system\n#no drive letter, start with '/' = absolute path, else relative to start folder\n#e.g. /my-local-path/my-http, my-http", "#jps.user.web.local.root=", "",
             "#WebApp main Page", "jps.webapp.main.page=/workbench.html", "",
             "#Web content cache mode", "jps.web.cache.load.onstartup=" + FALSE, "",
+            "#Web content caching enabled", "jps.web.cache.caching.enabled=" + TRUE, "",
             "#Extensions enabled", "jps.extensions.enabled=" + TRUE, "",
             "#Extensions root folder name", "jps.extension.root=" + EXTENSION_ROOT, "",
             "#Extensions bin folder name", "jps.extension.bin=" + EXTENSION_BIN, "",
             "#Extensions data folder name", "jps.extension.data=" + EXTENSION_DATA, "",
             "#Extensions auto load file name", "jps.extensions.autoload.file=" + EXTENSION_AUTOLOAD_FILE, "",
+            "#Command task worker", "jps.command.task.worker=10", "",
             "#Workspace root folder", "jps.workspace.root=" + WORKSPACE_ROOT, "",
             "#Data root folder", "jps.data.root=" + DATA_ROOT, "",
             "#JavaScriptProvider script root folder", "jps.script.root=" + SCRIPT_ROOT, "",
@@ -88,7 +93,7 @@ public class AppConfig {
             "#JavaScript debug enabled", "jps.javascript.debug.enabled=" + FALSE, "",
             "#WebSocket url root", "jps.websocket.url.root=/wsoapi", "",
             "#WebSocket max upstream size", "jps.websocket.max.upstream.size=65000", "",
-            "#WebSocket Task worker threads", "jps.websocket.task.worker=5", "",
+            "#WebSocket Task worker threads", "jps.websocket.task.worker=10", "",
             "#WebService url root", "jps.webservice.url.root=/webapi", "",
             "#Server enabled", "jps.server.enabled=" + TRUE, "",
             "#WebService enabled", "jps.webservice.enabled=" + TRUE, "",
@@ -124,10 +129,6 @@ public class AppConfig {
         props.put(key, System.getProperty(key, props.getProperty(key, defaultValue)));
     }
 
-    public int getJPSCommandWorkerPoolSize() {
-        return Integer.valueOf(props.getProperty("command.worker.pool.size", "10"));
-    }
-
     public int getHttpServerPort() {
         return Integer.valueOf(props.getProperty("http.server.port", "9090"));
     }
@@ -146,6 +147,10 @@ public class AppConfig {
 
     public String getWebRoot() {
         return props.getProperty("jps.web.root", WEB_FILE_ROOT);
+    }
+
+    public String getUserWebLocalRoot() {
+        return props.getProperty("jps.user.web.local.root", "");
     }
 
     public String getDataRoot() {
@@ -180,6 +185,10 @@ public class AppConfig {
         return Boolean.parseBoolean(props.getProperty("jps.web.cache.load.onstartup", FALSE));
     }
 
+    public boolean webCacheCachingEnabled() {
+        return Boolean.parseBoolean(props.getProperty("jps.web.cache.caching.enabled", TRUE));
+    }
+
     public String getScriptRoot() {
         return props.getProperty("jps.script.root", SCRIPT_ROOT);
     }
@@ -208,8 +217,12 @@ public class AppConfig {
         return Long.valueOf(props.getProperty("jps.websocket.max.upstream.size", "65000"));
     }
 
-    public int getWebSocketTaskWorkerNumber() {
-        return Integer.valueOf(props.getProperty("jps.websocket.task.worker", "5"));
+    public int getWebSocketTaskWorker() {
+        return Integer.valueOf(props.getProperty("jps.websocket.task.worker", "10"));
+    }
+
+    public int getJPSCommandTaskWorker() {
+        return Integer.valueOf(props.getProperty("jps.command.task.worker", "10"));
     }
 
     public String getWebServiceUrlRoot() {
@@ -272,8 +285,20 @@ public class AppConfig {
 
     /**
     */
-    public int getHttpWorkerNumber() {
-        return Integer.valueOf(props.getProperty("http.worker", "5"));
+    public int getHttpMaxConnections() {
+        return Integer.valueOf(props.getProperty("http.max.connections", "200"));
+    }
+
+    /**
+    */
+    public int getHttpMaxHeaderSize() {
+        return Integer.valueOf(props.getProperty("http.max.header.size", "16384"));
+    }
+
+    /**
+    */
+    public int getHttpMaxContentLength() {
+        return Integer.valueOf(props.getProperty("http.max.content.length", "5242880"));
     }
 
     /**

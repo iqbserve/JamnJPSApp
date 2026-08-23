@@ -13,7 +13,8 @@
 				"console": "internalConsole",
 				"cwd": "./server-app/app",
 				"mainClass": "iqb.jps.boot.ApplicationLauncher",
-				"projectName": "jamn-JPSApp"
+				"projectName": "jamn-JPSApp",
+				"args": ""
 			},
 			{
 				"type": "java",
@@ -24,7 +25,8 @@
 				"projectName": "jamn-JPSApp",
 				"classPaths": [
 					"${workspaceFolder}/server-app/app/target/jamn-JPSApp-0.0.1-SNAPSHOT.jar"
-				]
+				],
+				"args": ""
 			}
 		]
 	},

@@ -28,10 +28,6 @@ import java.util.stream.Stream;
  * It locates the executable JAR, extracts embedded module JARs, builds a class loader with the necessary URLs,
  * and invokes the main method of the application class.
  * 
- * Important note: 
- * Even though the launcher resides in `core` and this module defines some of the fundamental dependencies,
- * these dependencies are not yet available when the launcher starts.
- * 
  * The embedded JARs get extracted to a temp directory and are cleaned up on shutdown.
  * A command in /users/<my-name>/ like: dir /s /b /ad <jar.temp.dir.prefix>*
  * should find nothing after the app is closed.
@@ -50,7 +46,7 @@ public class ApplicationLauncher {
             "appname",
             "app.class.name",
             "jar.libsdir",
-            "jar.temp.dir.prefix"
+            "jar.temp.dir.prefix" // prefix for the temporary directory where embedded JARs are extracted
     };
 
     private ApplicationLauncher() {
@@ -146,7 +142,7 @@ public class ApplicationLauncher {
     /**
      */
     private static Path extractEmbeddedJars(Path sourcePath, String libsDir, String tempDirPrefix) throws IOException {
-        Path tempDir = Files.createTempDirectory(tempDirPrefix);
+        Path tempDir = Files.createTempDirectory(tempDirPrefix); //NOSONAR - TODO: check potential issue (java:S5443)
 
         // standard execution from the app JAR file
         try (JarFile jarFile = new JarFile(sourcePath.toFile())) {
@@ -196,7 +192,7 @@ public class ApplicationLauncher {
      */
     private static void registerShutdownCleanup(URLClassLoader classLoader, Path directory, String appName) {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            printLog(String.format("Shutdown initiated for: [%s]", appName));
+            hookLog(String.format("Shutdown initiated for: [%s]", appName));
             try {
                 // close the ClassLoader to release file handles on extracted JARs
                 if (classLoader != null) {
@@ -205,9 +201,9 @@ public class ApplicationLauncher {
 
                 // perform recursive deletion
                 deleteRecursively(directory);
-                printLog(String.format("Cleaned up temporary directory: [%s]", directory));
-            } catch (IOException e) {
-                printLog(String.format("Failed to clean up temporary directory: [%s]", directory));
+                hookLog(String.format("Cleaned up temporary directory: [%s]", directory));
+            } catch (IOException _) {
+                hookLog(String.format("Failed to clean up temporary directory: [%s]", directory));
             }
         }));
     }
@@ -229,7 +225,7 @@ public class ApplicationLauncher {
     /**
      * used for vm cleanup hook
      */
-    private static void printLog(Object message) {
-        System.out.println(message);
+    private static void hookLog(Object message) {
+        System.out.println(message); //NOSONAR - logging will not reach console out on hook
     }
 }

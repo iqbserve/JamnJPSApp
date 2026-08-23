@@ -10,7 +10,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import iqb.jps.core.AppConfig;
@@ -25,12 +27,12 @@ import iqb.jps.core.AppConfig;
  */
 public class OperatingSystemInterface {
 
-    protected static boolean Windows = true;
-    protected static boolean Unix = false;
+    public static final boolean IsOnWindows;
+    public static final boolean IsOnUnix;
     static {
         String name = System.getProperty("os.name").toLowerCase();
-        Windows = name.contains("win");
-        Unix = (name.contains("nix") || name.contains("nux") || name.contains("aix"));
+        IsOnWindows = name.contains("win");
+        IsOnUnix = (name.contains("nix") || name.contains("nux") || name.contains("aix"));
     }
 
     protected OSFunctions osFunctions;
@@ -44,25 +46,13 @@ public class OperatingSystemInterface {
      */
     public OperatingSystemInterface(AppConfig config, Path homePath) {
         this.homePath = homePath;
-        if (Windows) {
+        if (IsOnWindows) {
             shellEncoding = Charset.forName(config.getWinShellEncoding());
             osFunctions = new WinowsFunctions();
-        } else if (Unix) {
+        } else if (IsOnUnix) {
             shellEncoding = Charset.forName(config.getUnixShellEncoding());
             osFunctions = new UnixFunctions();
         }
-    }
-
-    /**
-     */
-    public boolean isOnWindows() {
-        return Windows;
-    }
-
-    /**
-     */
-    public boolean isOnUnix() {
-        return Unix;
     }
 
     /**
@@ -78,8 +68,7 @@ public class OperatingSystemInterface {
 
         /**
          */
-        public List<String> shellCmd(String[] cmdParts, String workingDir, boolean inherit,
-                Consumer<String> outputConsumer);
+        public List<String> shellCmd(CmdDef cmd);
 
     }
 
@@ -99,13 +88,9 @@ public class OperatingSystemInterface {
         }
 
         @Override
-        public List<String> shellCmd(String[] cmdParts, String workingDir, boolean inherit,
-                Consumer<String> outputConsumer) {
+        public List<String> shellCmd(CmdDef cmd) {
             ShellProcess process = new ShellProcess()
-                    .setCommand(cmdParts)
-                    .setWorkingDir(workingDir)
-                    .setInherit(inherit)
-                    .setOutputConsumer(outputConsumer);
+                    .setCommand(cmd);
             process.start();
             return process.getOutput();
         }
@@ -125,10 +110,8 @@ public class OperatingSystemInterface {
         protected String id = "";
         protected ShellProcessListener listener = id -> {
         };
-        protected Consumer<String> outputConsumer = null;
-        protected List<String> command;
-        protected String workingDir;
-        protected boolean inherit = false;
+
+        protected CmdDef cmd = null;
 
         protected Process process = null;
         protected List<String> outPut = new ArrayList<>();
@@ -142,21 +125,8 @@ public class OperatingSystemInterface {
 
         /**
          */
-        public ShellProcess setCommand(String[] cmdParts) {
-            command = new ArrayList<>();
-
-            if (Windows) {
-                command.add(0, "cmd");
-                command.add(1, "/c");
-            }
-            command.addAll(Arrays.asList(cmdParts));
-            return this;
-        }
-
-        /**
-         */
-        public ShellProcess setWorkingDir(String workingDir) {
-            this.workingDir = resolveWorkingDir(workingDir);
+        public ShellProcess setCommand(CmdDef cmd) {
+            this.cmd = cmd;
             return this;
         }
 
@@ -164,20 +134,6 @@ public class OperatingSystemInterface {
          */
         public ShellProcess setListener(ShellProcessListener listener) {
             this.listener = listener;
-            return this;
-        }
-
-        /**
-         */
-        public ShellProcess setOutputConsumer(Consumer<String> outputConsumer) {
-            this.outputConsumer = outputConsumer;
-            return this;
-        }
-
-        /**
-         */
-        public ShellProcess setInherit(boolean inherit) {
-            this.inherit = inherit;
             return this;
         }
 
@@ -208,14 +164,15 @@ public class OperatingSystemInterface {
             try {
 
                 builder = new ProcessBuilder();
-                builder.command(command);
+                builder.command(cmd.getCommandAsList());
+                builder.environment().putAll(cmd.getEnvVars());
                 builder.redirectErrorStream(true);
-                if (inherit) {
+                if (cmd.isInherit()) {
                     builder.inheritIO();
                 }
 
-                if (workingDir != null && !workingDir.isEmpty()) {
-                    Path path = Paths.get(workingDir);
+                if (cmd.getWorkingDir() != null && !cmd.getWorkingDir().isEmpty()) {
+                    Path path = Paths.get(resolveWorkingDir(cmd.getWorkingDir()));
                     builder.directory(path.toFile());
                 }
                 process = builder.start();
@@ -223,6 +180,7 @@ public class OperatingSystemInterface {
                 try (BufferedReader stdInput = new BufferedReader(
                         new InputStreamReader(process.getInputStream(), shellEncoding));) {
 
+                    Consumer<String> outputConsumer = cmd.getOutputConsumer();
                     while ((line = stdInput.readLine()) != null) {
                         if (outputConsumer != null) {
                             outputConsumer.accept(line);
@@ -234,9 +192,10 @@ public class OperatingSystemInterface {
 
                 process.waitFor();
 
-            } catch (InterruptedException | IOException e) {
+            } catch (InterruptedException | IOException e) { //NOSONAR
                 throw new UncheckedOSIFaceException(
-                        String.format("ERROR executing ShellProcess [%s] [%s]", String.join(" ", command),
+                        String.format("ERROR executing ShellProcess [%s] [%s]",
+                                String.join(" ", cmd.getCommandAsList()),
                                 e.getMessage()),
                         e);
             } finally {
@@ -283,6 +242,74 @@ public class OperatingSystemInterface {
     protected class UnixFunctions extends AbstractOSFunctions {
         protected UnixFunctions() {
             super();
+        }
+    }
+
+    /**
+     */
+    public static class CmdDef {
+        private String[] cmdParts = new String[] {};
+        private String workingDir = "";
+        private boolean inherit = false;
+        private Consumer<String> outputConsumer = null;
+        private Map<String, String> envVars = new HashMap<>();
+
+        public List<String> getCommandAsList() {
+            List<String> commandList = new ArrayList<>(Arrays.asList(cmdParts));
+            if (IsOnWindows) {
+                commandList.add(0, "cmd");
+                commandList.add(1, "/c");
+            }
+            return commandList;
+        }
+
+        public String[] getCmdParts() {
+            return cmdParts;
+        }
+
+        public CmdDef setCmdParts(String[] cmdParts) {
+            this.cmdParts = cmdParts;
+            return this;
+        }
+
+        public String getWorkingDir() {
+            return workingDir;
+        }
+
+        public CmdDef setWorkingDir(String workingDir) {
+            this.workingDir = workingDir;
+            return this;
+        }
+
+        public boolean isInherit() {
+            return inherit;
+        }
+
+        public CmdDef setInherit(boolean inherit) {
+            this.inherit = inherit;
+            return this;
+        }
+
+        public boolean hasOutputConsumer() {
+            return outputConsumer != null;
+        }
+
+        public Consumer<String> getOutputConsumer() {
+            return outputConsumer;
+        }
+
+        public CmdDef setOutputConsumer(Consumer<String> outputConsumer) {
+            this.outputConsumer = outputConsumer;
+            return this;
+        }
+
+        public Map<String, String> getEnvVars() {
+            return envVars;
+        }
+
+        public CmdDef setEnvVars(Map<String, String> envVars) {
+            this.envVars = envVars;
+            return this;
         }
     }
 

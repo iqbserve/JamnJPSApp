@@ -12,17 +12,14 @@ public class WsoContext {
     ExecutorService taskExecutor;
     Function<WsoCommonMessage, byte[]> newResponseMessage;
 
-    public WsoContext(ExecutorService taskExecutor, Function<WsoCommonMessage, byte[]> newResponseMessage) {
-        this.taskExecutor = taskExecutor;
-        this.newResponseMessage = newResponseMessage;
-    }
-
     /**
      */
-    void setConnection(WsoConnection connection) {
+    public WsoContext(ExecutorService taskExecutor, Function<WsoCommonMessage, byte[]> newResponseMessage, WsoConnection connection) {
+        this.taskExecutor = taskExecutor;
+        this.newResponseMessage = newResponseMessage;
         this.connection = connection;
     }
-
+    
     /**
      */
     public void sendMessage(WsoCommonMessage message) {

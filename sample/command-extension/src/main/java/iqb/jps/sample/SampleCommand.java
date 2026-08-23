@@ -1,9 +1,13 @@
 /* Authored by iqbserve.de */
 package iqb.jps.sample;
 
-import java.util.Date;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * <pre>
@@ -12,6 +16,9 @@ import java.util.function.Consumer;
  * </pre>
  */
 public class SampleCommand {
+
+    private static final Supplier<String> dateTimeSupplier = () -> ZonedDateTime.now(ZoneId.of("UTC"))
+        .format(DateTimeFormatter.ofPattern("EEE MMM dd HH:mm:ss z yyyy", Locale.ENGLISH));
 
     // the command name and the host output
     private String name; // the name is name of the json def file - NOT the class name
@@ -39,7 +46,7 @@ public class SampleCommand {
             }
         }
 
-        echo(String.format("Start: runext [%s] [%s]", name, new Date()));
+        echo(String.format("Start: runext [%s] [%s]", name, dateTimeSupplier.get()));
 
         if (args.length > 0) {
             return "Echo args:" + "\n " + String.join("\n ", args);

@@ -3,6 +3,7 @@
 # server-app/http is the outDir of web-app project
 # see web-app/tsconfig.json
 **/server-app/app/http/**
+**/server-app/app/*http/**
 
 **/node
 **/node_modules

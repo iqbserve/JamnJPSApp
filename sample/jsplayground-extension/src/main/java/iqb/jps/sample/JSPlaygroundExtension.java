@@ -1,7 +1,6 @@
 /* Authored by iqbserve.de */
 package iqb.jps.sample;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,7 +16,7 @@ public class JSPlaygroundExtension {
     protected ExtensionInstanceContext ctx;
     protected Map<String, PlaygroundRequest> contentBuffer = new HashMap<>();
 
-    public JSPlaygroundExtension(ExtensionInstanceContext ctx) throws IOException {
+    public JSPlaygroundExtension(ExtensionInstanceContext ctx) {
         this.ctx = ctx;
     }
 

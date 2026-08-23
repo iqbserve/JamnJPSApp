@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.function.Consumer;
 
@@ -290,7 +291,8 @@ public class JavaScriptProvider {
 
         /**
          */
-        public List<String> shellCmd(String cmdLine, String workingDir, Consumer<String> outputConsumer);
+        public List<String> shellCmd(String cmdLine, String workingDir, Consumer<String> outputConsumer,
+                Map<String, String> envVars);
 
     }
 
@@ -342,12 +344,12 @@ public class JavaScriptProvider {
         protected static final String GRAAL_JSEOPTION = "#GraalJS Engine option";
         protected static final String DEFAULT_CONFIG = String.join(System.lineSeparator(),
                 "#" + JavaScriptProvider.class.getSimpleName() + " Config Properties", "",
-                GRAAL_JSEOPTION, GRAAL_WARN_INTERPRETER + "=false", "",
+                GRAAL_JSEOPTION, GRAAL_WARN_INTERPRETER + "=" + FALSE, "",
                 GRAAL_JSEOPTION, GRAAL_INSPECT + "=localhost:9229", "",
-                GRAAL_JSEOPTION, GRAAL_INSPECT_SECURE + "=false", "",
-                GRAAL_JSEOPTION, GRAAL_INSPECT_SUSPEND + "=false", "",
+                GRAAL_JSEOPTION, GRAAL_INSPECT_SECURE + "=" + FALSE, "",
+                GRAAL_JSEOPTION, GRAAL_INSPECT_SUSPEND + "=" + FALSE, "",
                 GRAAL_JSEOPTION, GRAAL_INSPECT_PATH + "=", "jaman-server-js",
-                "#JavaScript debug enabled", JS_DEBUG + "=false", "");
+                "#JavaScript debug enabled", JS_DEBUG + "=" + FALSE, "");
 
         protected Properties props = new Properties();
 

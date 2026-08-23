@@ -7,6 +7,7 @@ import { WorkViewHtml } from 'core/view-templates.mjs';
 import * as Webapi from 'app/core/webapi.mjs';
 import * as Icons from 'core/icons.mjs';
 
+import { WbProperties } from 'config/wbapp-properties.mjs';
 import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
 import { SimpleCrudComp } from 'app/core/uicomponents.mjs';
 
@@ -190,7 +191,7 @@ class DbConnectionsView extends WorkView {
 					${makeLI(Icons.save("class"), 'saves the current data')}
 					${makeLI(Icons.trash("class"), 'deletes the current connection')}
 				</ul >
-				<span>Java Source Code: </span><a class="wkv-link-ctrl" href="https://github.com/iqbserve/JamnJPSApp" target="iqbserve.code">SampleExtension.java<a>
+				<span>Java Source Code: </span><a class="wkv-link-ctrl" href="${WbProperties.get('links').DBConnectionExtension}" target="iqbserve.code">SampleExtension.java<a>
 				`
 			);
 

@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import iqb.jps.core.AppConfig;
@@ -12,6 +13,7 @@ import iqb.jps.core.HelperTool;
 import iqb.jps.appcomp.JavaScriptProvider.JSCallContext;
 import iqb.jps.appcomp.JavaScriptProvider.JavaScriptHostApp;
 import iqb.jps.appcomp.JavaScriptProvider.JavaScriptHostAppAdapter;
+import iqb.jps.appcomp.OperatingSystemInterface.CmdDef;
 
 /**
  * <pre>
@@ -78,7 +80,7 @@ public class JavaScriptAppAdapter implements JavaScriptHostAppAdapter {
          */
         @Override
         public boolean isOnUnix() {
-            return osIFace.isOnUnix();
+            return OperatingSystemInterface.IsOnUnix;
         }
 
         /**
@@ -126,24 +128,30 @@ public class JavaScriptAppAdapter implements JavaScriptHostAppAdapter {
          * </pre>
          */
         @Override
-        public List<String> shellCmd(String cmdLine, String workingDir, Consumer<String> scriptOutputConsumer) {
-
-            String[] cmdParts = HelperTool.getInstance().rebuildQuotedWhitespaceStrings(cmdLine.split(" "));
+        public List<String> shellCmd(String cmdLine, String workingDir, Consumer<String> outputConsumer,
+                Map<String, String> envVars) {
 
             List<String> result = new ArrayList<>();
             Consumer<String> resultConsumer = result::add;
 
-            osIFace.fnc().shellCmd(cmdParts, workingDir, false, output -> {
-                if (scriptOutputConsumer != null) {
-                    scriptOutputConsumer.accept(output);
-                } else {
-                    resultConsumer.accept(output);
-                }
+            CmdDef cmd = new CmdDef()
+                    .setCmdParts(HelperTool.getInstance().rebuildQuotedWhitespaceStrings(cmdLine.split(" ")))
+                    .setInherit(false)
+                    .setWorkingDir(workingDir)
+                    .setOutputConsumer(output -> {
+                        if (outputConsumer != null) {
+                            outputConsumer.accept(output);
+                        } else {
+                            resultConsumer.accept(output);
+                        }
 
-                if (callCtx.getOutputConsumer() != null) {
-                    callCtx.getOutputConsumer().accept(output);
-                }
-            });
+                        if (callCtx.getOutputConsumer() != null) {
+                            callCtx.getOutputConsumer().accept(output);
+                        }
+                    })
+                    .setEnvVars(envVars);
+ 
+            osIFace.fnc().shellCmd(cmd);
             return result;
         }
     }
