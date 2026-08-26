@@ -13,6 +13,7 @@ import java.net.URL;
 import java.nio.file.*;
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
@@ -135,6 +136,8 @@ public class ResourceFileCache<T> implements Closeable {
             return;
         }
 
+        AtomicInteger resourceCounter = new AtomicInteger();
+
         // walk through the directory tree recursively
         try (Stream<Path> pathStream = Files.walk(rootPath)) {
             pathStream.filter(Files::isRegularFile).forEach(path -> {
@@ -143,6 +146,7 @@ public class ResourceFileCache<T> implements Closeable {
                     String httpKey = httpPrefix + rootPath.relativize(path).toString().replace("\\", "/");
                     T resource = cacheObjctSupplier.apply(httpKey, content);
                     putToCache(httpKey, resource);
+                    resourceCounter.incrementAndGet();
                 } catch (IOException e) {
                     throw new UncheckedIOException("Failed to read file: " + path, e);
                 }
@@ -153,11 +157,11 @@ public class ResourceFileCache<T> implements Closeable {
             // an owned zip file system can now be closed
             close();
         }
-        LOG.info("Loaded [{}] System resource files into cache", fileCache.size());
+        LOG.info("Loaded [{}] System resource files into cache", resourceCounter.get());
 
         if (userRootEnabled) {
+            resourceCounter.set(0); 
             // load user root resources for overwriting
-            int sizeBeforeUserLoad = fileCache.size();
             // walk through the directory tree recursively
             try (Stream<Path> pathStream = Files.walk(userRootPath)) {
                 pathStream.filter(Files::isRegularFile).forEach(path -> {
@@ -166,12 +170,13 @@ public class ResourceFileCache<T> implements Closeable {
                         String httpKey = httpPrefix + userRootPath.relativize(path).toString().replace("\\", "/");
                         T resource = cacheObjctSupplier.apply(httpKey, content);
                         putToCache(httpKey, resource);
+                        resourceCounter.incrementAndGet();
                     } catch (IOException e) {
                         throw new UncheckedIOException("Failed to read file: " + path, e);
                     }
                 });
             }
-            LOG.info("Loaded [{}] User resource files into cache", fileCache.size() - sizeBeforeUserLoad);
+            LOG.info("Loaded [{}] User resource files into cache", resourceCounter.get());
         }
     }
 
