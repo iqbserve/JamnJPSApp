@@ -16,8 +16,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +28,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import iqb.jps.JPSApp;
+import iqb.jps.annotation.WebResource;
 import iqb.jps.annotation.WebService;
 import iqb.jps.core.AppConfig;
 import iqb.jps.core.HelperTool;
@@ -46,10 +50,11 @@ public class ExtensionHandler {
 
     protected static final Logger LOG = LoggerFactory.getLogger(ExtensionHandler.class);
     protected static final HelperTool Tool = HelperTool.getInstance();
+    protected static String DEFFILE_SUFFIX = ".json";
 
     protected final Path pathBase;
     protected final Charset encoding;
-    protected final Map<String, ExtensionCartridge> extensions;
+    protected final ConcurrentHashMap<String, ExtensionCartridge> extensions;
     protected final JPSApp jpsApp;
     protected final JsonTool json;
     protected final AppConfig config;
@@ -60,7 +65,7 @@ public class ExtensionHandler {
      */
     public ExtensionHandler(Path extensionRoot, JPSApp jpsApp) {
         this.pathBase = extensionRoot;
-        this.extensions = new HashMap<>();
+        this.extensions = new ConcurrentHashMap<>();
         this.jpsApp = jpsApp;
         this.encoding = jpsApp.getStandardEncoding();
         this.json = jpsApp.getJsonTool();
@@ -81,15 +86,39 @@ public class ExtensionHandler {
 
     /**
      */
-    public void loadExtension(String name) {
-        getExtensionCat(name);
+    public void loadAllExtensions() throws IOException {
+        List<String> names = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+        try (Stream<Path> files = Files.list(getRootPath())) {
+            files.filter(Files::isRegularFile)
+                    .filter(p -> p.toString().endsWith(DEFFILE_SUFFIX))
+                    .forEach(path -> {
+                        try {
+                            String defFileContent = new String(Files.readAllBytes(path));
+                            ExtensionDef extensionDef = json.toObject(defFileContent, ExtensionDef.class);
+                            if (extensionDef.getName() == null || extensionDef.getName().trim().isEmpty()) {
+                                extensionDef.setName(path.getFileName().toString().replace(DEFFILE_SUFFIX, ""));
+                            }
+                            registerExtension(extensionDef);
+                            names.add(extensionDef.getName());
+                        } catch (IOException e) {
+                            errors.add(e.toString());
+                        }
+                    });
+        }
+
+        if (!errors.isEmpty()) {
+            LOG.error("Extension installation error(s) [{}]: [{}]", errors.size(), errors);
+        } else {
+            LOG.info("Extensions installed [{}] - [{}]", names.size(), names);
+        }
     }
 
     /**
      */
     public String run(ExtensionCallContext ctx, String name, Object... args) {
         String result = "";
-        ExtensionCartridge cart = getExtensionCat(name);
+        ExtensionCartridge cart = getExtensionCart(name);
 
         try {
             Object instance = cart.getRunInstance(Optional.ofNullable(ctx));
@@ -107,16 +136,23 @@ public class ExtensionHandler {
 
     /********************************************************************************/
     /********************************************************************************/
+
     /**
      */
-    protected ExtensionCartridge getExtensionCat(String name) {
-        // normalize the name to avoid case-sensitivity issues
-        name = name.trim().toLowerCase();
+    protected ExtensionCartridge registerExtension(ExtensionDef def) {
+        ExtensionCartridge cart = new ExtensionCartridge(def.getName(), def);
+        initExtension(cart);
+        extensions.put(def.getName(), cart);
+        return cart;
+    }
+
+    /**
+     */
+    protected ExtensionCartridge getExtensionCart(String name) {
+        // load on demand if absent
         return extensions.computeIfAbsent(name, key -> {
             ExtensionDef def = readDefinition(key);
-            ExtensionCartridge cart = new ExtensionCartridge(key, def);
-            initExtension(cart);
-            return cart;
+            return registerExtension(def);
         });
     }
 
@@ -175,10 +211,15 @@ public class ExtensionHandler {
         ExtensionDef def = null;
 
         try {
-            defFile = Paths.get(pathBase.toString(), name + ".json");
+            defFile = Paths.get(pathBase.toString(), name + DEFFILE_SUFFIX);
             if (Files.exists(defFile)) {
                 jsonDef = new String(Files.readAllBytes(defFile), encoding);
                 def = json.toObject(jsonDef, ExtensionDef.class);
+
+                if (def.getName() == null || def.getName().trim().isEmpty()) {
+                    def.setName(name);
+                }
+
             } else {
                 throw new UncheckedExtensionException(
                         String.format("NO extension definition-file found [%s]", defFile.getFileName()));
@@ -303,7 +344,8 @@ public class ExtensionHandler {
         protected void initHttpEndpoints() {
             Method[] methods = clazz.getDeclaredMethods();
             for (Method method : methods) {
-                if (method.isAnnotationPresent(WebService.class)) {
+                if (method.isAnnotationPresent(WebService.class) ||
+                        method.isAnnotationPresent(WebResource.class)) {
                     webServiceRegistry.registerServices(() -> getRunInstance(Optional.empty()));
                     break;
                 }
@@ -327,8 +369,8 @@ public class ExtensionHandler {
                     ctx.put("output", outputConsumer);
                     newInstance = constructor.newInstance(ctx);
                 } else if (this.contextClass == ExtensionInstanceContext.class) {
-                    ExtensionInstanceContext ctx = new ExtensionInstanceContext(outputConsumer, 
-                        Paths.get(pathBase.toString(), config.getExtensionData()), jpsApp);
+                    ExtensionInstanceContext ctx = new ExtensionInstanceContext(outputConsumer,
+                            Paths.get(pathBase.toString(), config.getExtensionData()), jpsApp);
                     newInstance = constructor.newInstance(ctx);
                 }
             } else {
@@ -360,6 +402,8 @@ public class ExtensionHandler {
     /**
      */
     public static class ExtensionDef {
+        protected String name = "";
+        protected String description = "";
         protected String binPath = "";
         protected String devPath = "";
         protected List<String> libs = new ArrayList<>();
@@ -369,6 +413,22 @@ public class ExtensionHandler {
         protected boolean singleton = false;
 
         protected Map<String, String> config = new HashMap<>();
+
+        public String getName() {
+            return name;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
+        }
 
         public String getBinPath() {
             return binPath;
@@ -415,12 +475,15 @@ public class ExtensionHandler {
 
         @Override
         public String toString() {
-            BinaryOperator<String> field = (name, value) -> name + "=" + value;
+            BinaryOperator<String> field = (fieldName, value) -> fieldName + "=" + value;
             return String.format("[%s]",
                     String.join(", ",
+                            field.apply("name", this.name),
                             field.apply("className", this.className),
                             field.apply("runMethod", this.runMethod),
-                            field.apply("scope", this.scope)));
+                            field.apply("scope", this.scope),
+                            field.apply("singleton", Boolean.toString(this.singleton))
+                    ));
         }
 
         @JsonIgnore

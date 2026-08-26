@@ -7,16 +7,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Interfaces to annotate methods as WebServices.
+ * Interfaces to annotate methods as WebResource.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface WebService {
+public @interface WebResource {
+
     public String path() default "/";
 
-    public String[] methods() default { "GET", "POST" };
-
-    public String contentType() default "application/json";
-
-    public String[] header() default {};
 }

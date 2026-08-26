@@ -16,13 +16,14 @@ import iqb.jps.JamnServer.RequestMessage;
 import iqb.jps.JamnServer.ResponseMessage;
 import iqb.jps.core.HelperTool;
 import iqb.jps.core.ResourceFileCache;
+import iqb.jps.core.WebResourceRegistry;
 
 /**
  * <pre>
  * The class realizes a simple Web Content Provider.
  * </pre>
  */
-public class WebContentProvider implements JamnServer.ContentProvider {
+public class WebContentProvider implements JamnServer.ContentProvider, WebResourceRegistry {
 
     protected static HelperTool Tool = HelperTool.getInstance();
     protected static Logger LOG = LoggerFactory.getLogger(WebContentProvider.class);
@@ -47,6 +48,15 @@ public class WebContentProvider implements JamnServer.ContentProvider {
     @Override
     public void setPathMapper(BiFunction<String, RequestMessage, String> mapper) {
         this.pathMapper = mapper;
+    }
+
+    /**
+     * WebResourceRegistry Interface method.
+     */
+    @Override
+    public WebResourceRegistry registerResource(String path, byte[] data) {
+        resourceCache.registerResource(path, data);
+        return this;
     }
 
     /**
@@ -213,5 +223,4 @@ public class WebContentProvider implements JamnServer.ContentProvider {
             return httpStatus;
         }
     }
-
 }

@@ -6,27 +6,163 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>iqb.jps</groupId>
-	<artifactId>jaman-jpsapp-build-all</artifactId>
+	<artifactId>jaman-jpsapp-project-parent</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
-	<!--
-	This pom is just used as a build all pom for the JPSApp project.
-	The main project module is the server-app module,
-	which contains the main application code and the executable jar build.
-	-->
-
-	<name>JPSApp Build All</name>
-	<description>Just a build all pom</description>
+	<name>JPSApp Project Parent-Aggregator</name>
+	<description>Jamn JPSApp Project Parent/Aggregator pom</description>
 	
 	<properties>
 		<java.version>25</java.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+		<junit.jupiter.version>6.0.3</junit.jupiter.version>
+
+		<slf4j.version>2.0.13</slf4j.version>
+		<jackson.core.version>3.1.4</jackson.core.version>
+		<jackson.annotations.version>2.21</jackson.annotations.version>
+		<graalvm.version>24.1.0</graalvm.version>
+
+		<maven.surefire.plugin.version>3.5.4</maven.surefire.plugin.version>
+		<maven.compiler.plugin.version>3.15.0</maven.compiler.plugin.version>
+		<maven.jar.plugin.version>3.4.0</maven.jar.plugin.version>
+		<maven.source.plugin.version>3.3.1</maven.source.plugin.version>
+		<maven.dependency.plugin.version>3.6.0</maven.dependency.plugin.version>
+		<maven.antrun.plugin.version>3.2.0</maven.antrun.plugin.version>
+		<maven.assembly.plugin.version>3.6.0</maven.assembly.plugin.version>
+		<frontend.maven.plugin.version>2.0.1</frontend.maven.plugin.version>
+		<node.version>v24.0.0</node.version>
+
+		<maven.compiler.source>${java.version}</maven.compiler.source>
+		<maven.compiler.target>${java.version}</maven.compiler.target>
 	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.junit.jupiter</groupId>
+				<artifactId>junit-jupiter</artifactId>
+				<version>${junit.jupiter.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.slf4j</groupId>
+				<artifactId>slf4j-api</artifactId>
+				<version>${slf4j.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.slf4j</groupId>
+				<artifactId>slf4j-jdk14</artifactId>
+				<version>${slf4j.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>tools.jackson.core</groupId>
+				<artifactId>jackson-core</artifactId>
+				<version>${jackson.core.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>tools.jackson.core</groupId>
+				<artifactId>jackson-databind</artifactId>
+				<version>${jackson.core.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.fasterxml.jackson.core</groupId>
+				<artifactId>jackson-annotations</artifactId>
+				<version>${jackson.annotations.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.graalvm.polyglot</groupId>
+				<artifactId>polyglot</artifactId>
+				<version>${graalvm.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.graalvm.polyglot</groupId>
+				<artifactId>js-community</artifactId>
+				<version>${graalvm.version}</version>
+				<type>pom</type>
+			</dependency>
+
+			<dependency>
+				<groupId>iqb.jps</groupId>
+				<artifactId>jpsapp-boot</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>iqb.jps</groupId>
+				<artifactId>jpsapp-core</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>iqb.jps</groupId>
+				<artifactId>jamn-server</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>iqb.jps</groupId>
+				<artifactId>jamn-JPSApp</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>iqb.jps</groupId>
+				<artifactId>jaman-jpswebapp</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>${maven.compiler.plugin.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<version>${maven.surefire.plugin.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-source-plugin</artifactId>
+					<version>${maven.source.plugin.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-jar-plugin</artifactId>
+					<version>${maven.jar.plugin.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-dependency-plugin</artifactId>
+					<version>${maven.dependency.plugin.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-antrun-plugin</artifactId>
+					<version>${maven.antrun.plugin.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-assembly-plugin</artifactId>
+					<version>${maven.assembly.plugin.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>com.github.eirslett</groupId>
+					<artifactId>frontend-maven-plugin</artifactId>
+					<version>${frontend.maven.plugin.version}</version>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+	</build>
 
 	<modules>
 		<module>server-app</module>
+		<module>extension-parent</module>
 		<module>sample</module>
-		<module>web-app</module>
 	</modules>
 
 </project>

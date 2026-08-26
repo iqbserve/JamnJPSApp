@@ -3,8 +3,10 @@ package iqb.jps.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -16,17 +18,19 @@ import java.util.stream.Stream;
 
 /**
  * <pre>
- * A generic resource file cache that loads files from a specified source folder.
+ * A generic resource file cache that loads files from the specified source folders.
  * 
- * Supports loading resources from both the filesystem and JAR files.
- * The cache is used by the JamnServer.WebContentProvider as a file system abstraction.
+ * Supports loading resources from both the filesystem and a hosting JAR file.
+ * The cache is used by the JamnServer.WebContentProvider as its file system abstraction.
  * 
  * The cache also supports a user root folder for user local development, extensions or customizations.
+ * 
  * </pre>
  */
-public class ResourceFileCache<T> {
+public class ResourceFileCache<T> implements Closeable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ResourceFileCache.class);
+    private static final String httpPrefix = "/";
 
     // cache to store loaded resource files of type <T>
     private final ConcurrentHashMap<String, T> fileCache = new ConcurrentHashMap<>();
@@ -37,7 +41,6 @@ public class ResourceFileCache<T> {
     private String userSourceFolder;
     // supplier factory function to create T objects from file content
     private BiFunction<String, byte[], T> cacheObjctSupplier;
-    private String httpPrefix = "/";
     private Path rootPath;
     private Path userRootPath = null;
 
@@ -45,6 +48,8 @@ public class ResourceFileCache<T> {
     private boolean isFromJar = false;
     private boolean cachingEnabled = true;
     private boolean userRootEnabled = false;
+    // true only if this instance created the zip file system itself
+    private boolean fileSystemOwned = false;
 
     /**
      * Constructs a new ResourceFileCache.
@@ -63,22 +68,12 @@ public class ResourceFileCache<T> {
 
         initialize();
 
-        if (loadOnStartup) {
-            doStartupLoad();
-        }
+        doStartupLoad();
+
         LOG.info("Resource cache initialization done: enabled: [{}] startload: [{}] system-root: [{}] user-root: [{}]",
                 cachingEnabled,
                 loadOnStartup, rootPath.toUri(), userRootPath != null ? userRootPath.toUri() : "none");
 
-    }
-
-    /**
-     * Checks if the application is running from a JAR file.
-     */
-    public static boolean isRunningFromJar() {
-        String classPath = ResourceFileCache.class.getResource(ResourceFileCache.class.getSimpleName() + ".class")
-                .toString();
-        return classPath.startsWith("jar:");
     }
 
     /**
@@ -87,30 +82,57 @@ public class ResourceFileCache<T> {
     public T getResource(String path) throws IOException {
         T resource = fileCache.get(path);
         if (resource == null) {
+            // if cache is fully preloaded - resource is savely not available here
+            // avoid touching a possibly closed file system in loadResource
             if (loadOnStartup && cachingEnabled) {
                 throw new FileNotFoundException("Resource file not found in cache: " + path);
             }
             resource = loadResource(path);
-            if (resource == null) {
-                throw new FileNotFoundException("Resource file not found: " + path);
-            }
         }
         return resource;
     }
 
     /**
+     * Imperative push method for putting a resource into the cache.
+     * The method is intended for external use.
+     * In this way e.g. extensions can register resources at runtime.
      */
-    public Path getRootPath() {
-        return rootPath;
+    public void registerResource(String path, byte[] resourceData) {
+        T resource = cacheObjctSupplier.apply(path, resourceData);
+        // enforce put to cache even if caching is disabled for this operation
+        fileCache.put(path, resource);
     }
 
     /**
-     * Loads all resources from the root folder into the cache.
+     * Closes the zip file system if it was created by this instance.
+     */
+    @Override
+    public void close() throws IOException {
+        if (fileSystemOwned && isFromJar && fileSystem != null && fileSystem.isOpen()) {
+            fileSystem.close();
+        }
+    }
+
+    /**
+     * Puts a resource into the cache if caching is enabled.
+     */
+    private void putToCache(String path, T resource) {
+        if (cachingEnabled) {
+            fileCache.put(path, resource);
+        }
+    }
+
+    /**
+     * Loads all resources into the cache - if enabled.
      */
     private void doStartupLoad() throws IOException {
 
-        if (!loadOnStartup) {
-            throw new IllegalStateException("Cannot load all resources when loadOnStartup is [false]");
+        // check for the legal but senseless combination to warn about
+        if (loadOnStartup && !cachingEnabled) {
+            LOG.warn("Skipping resource startup load: loadOnStartup is true but caching is disabled.");
+            return;
+        } else if (!loadOnStartup) {
+            return;
         }
 
         // walk through the directory tree recursively
@@ -120,43 +142,64 @@ public class ResourceFileCache<T> {
                     byte[] content = Files.readAllBytes(path);
                     String httpKey = httpPrefix + rootPath.relativize(path).toString().replace("\\", "/");
                     T resource = cacheObjctSupplier.apply(httpKey, content);
-                    fileCache.put(httpKey, resource);
+                    putToCache(httpKey, resource);
                 } catch (IOException e) {
-                    throw new RuntimeException("Failed to read file: " + path, e);
+                    throw new UncheckedIOException("Failed to read file: " + path, e);
                 }
             });
         } finally {
-            // close zip file system if explicitly created for a JAR
-            if (fileSystem != null && isFromJar && fileSystem.isOpen()) {
-                fileSystem.close();
-            }
+            // reaching here implies cachingEnabled=true (checked above),
+            // so rootPath is fully preloaded - and no longer accessed
+            // an owned zip file system can now be closed
+            close();
         }
         LOG.info("Loaded [{}] System resource files into cache", fileCache.size());
+
+        if (userRootEnabled) {
+            // load user root resources for overwriting
+            int sizeBeforeUserLoad = fileCache.size();
+            // walk through the directory tree recursively
+            try (Stream<Path> pathStream = Files.walk(userRootPath)) {
+                pathStream.filter(Files::isRegularFile).forEach(path -> {
+                    try {
+                        byte[] content = Files.readAllBytes(path);
+                        String httpKey = httpPrefix + userRootPath.relativize(path).toString().replace("\\", "/");
+                        T resource = cacheObjctSupplier.apply(httpKey, content);
+                        putToCache(httpKey, resource);
+                    } catch (IOException e) {
+                        throw new UncheckedIOException("Failed to read file: " + path, e);
+                    }
+                });
+            }
+            LOG.info("Loaded [{}] User resource files into cache", fileCache.size() - sizeBeforeUserLoad);
+        }
     }
 
     /**
-     * Loads a single resource file into the cache.
+     * Loads a single resource file from the user or system root.
      */
-    private T loadResource(String resourceName) throws IOException {
+    private T loadResource(String path) throws IOException {
 
         T resource = null;
 
         // first try user resource if enabled
-        resource = loadUserResource(resourceName);
+        resource = loadUserResource(path);
         if (resource != null) {
             return resource;
         }
 
-        // else do standard lookup
-        Path filePath = rootPath.resolve(
-                resourceName.startsWith(httpPrefix) ? resourceName.substring(1) : resourceName);
-        byte[] content = Files.readAllBytes(filePath);
-        String httpKey = httpPrefix + rootPath.relativize(filePath).toString().replace("\\", "/");
+        try {
+            // else do standard lookup
+            Path filePath = resolveWithinRoot(rootPath, path);
+            byte[] content = Files.readAllBytes(filePath);
+            String httpKey = httpPrefix + rootPath.relativize(filePath).toString().replace("\\", "/");
 
-        resource = cacheObjctSupplier.apply(httpKey, content);
+            resource = cacheObjctSupplier.apply(httpKey, content);
+            putToCache(httpKey, resource);
 
-        if (cachingEnabled) {
-            fileCache.put(httpKey, resource);
+        } catch (IOException e) {
+            LOG.debug("Resource file not found or not accessible: [{}]", path, e);
+            throw new FileNotFoundException("Resource file not found: [" + path + "]");
         }
         return resource;
     }
@@ -167,8 +210,7 @@ public class ResourceFileCache<T> {
     private T loadUserResource(String resourceName) throws IOException {
 
         if (userRootEnabled) {
-            Path userFilePath = userRootPath.resolve(
-                    resourceName.startsWith(httpPrefix) ? resourceName.substring(1) : resourceName);
+            Path userFilePath = resolveWithinRoot(userRootPath, resourceName);
             // existence must be checked,
             // because user root is called first and may not contain any files
             if (Files.exists(userFilePath) && Files.isRegularFile(userFilePath)) {
@@ -176,13 +218,26 @@ public class ResourceFileCache<T> {
                 String httpKey = httpPrefix + userRootPath.relativize(userFilePath).toString().replace("\\", "/");
 
                 T resource = cacheObjctSupplier.apply(httpKey, content);
-                if (cachingEnabled) {
-                    fileCache.put(httpKey, resource);
-                }
+                putToCache(httpKey, resource);
                 return resource;
             }
         }
         return null;
+    }
+
+    /**
+     * Resolves a resource name against a root path and rejects any path traversal
+     * attempt
+     * (e.g. via "../" segments) that would escape that root.
+     */
+    private Path resolveWithinRoot(Path root, String resourceName) throws IOException {
+        String relative = resourceName.startsWith(httpPrefix) ? resourceName.substring(httpPrefix.length())
+                : resourceName;
+        Path resolved = root.resolve(relative).normalize();
+        if (!resolved.startsWith(root)) {
+            throw new IOException("Resource path escapes root folder: " + resourceName);
+        }
+        return resolved;
     }
 
     /**
@@ -209,9 +264,12 @@ public class ResourceFileCache<T> {
         if (isFromJar) {
             try {
                 fileSystem = FileSystems.getFileSystem(rootFolderUri);
+                fileSystemOwned = false;
             } catch (FileSystemNotFoundException _) {
-                // If the JAR file system isn't open yet, create it
+                // If the JAR file system isn't open yet, create it; we own it and may close it
+                // later
                 fileSystem = FileSystems.newFileSystem(rootFolderUri, Collections.emptyMap());
+                fileSystemOwned = true;
             }
             rootPath = fileSystem.getPath(sourceFolder);
         } else {

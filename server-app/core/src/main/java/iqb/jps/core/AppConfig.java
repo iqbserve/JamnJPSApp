@@ -50,7 +50,6 @@ public class AppConfig {
     private static final String EXTENSION_ROOT = "extensions";
     private static final String EXTENSION_BIN = "bin";
     private static final String EXTENSION_DATA = "data";
-    private static final String EXTENSION_AUTOLOAD_FILE = "extensions-auto-load.json";
     private static final String WORKSPACE_ROOT = "workspace";
 
     public static final String DEFAULT_SERVER_CONFIG = String.join("\n",
@@ -74,16 +73,14 @@ public class AppConfig {
     private static final String DEFAULT_CONFIG = String.join("\n",
             "#Profile", "jps.profile" + "=app", "",
             "#HTTP Server port", "http.server.port=9090", "",
-            "#System Web files root folder\n#intended for the system web app\n#no drive letter, start with '/' = absolute path, else relative to jar or to start folder\n#e.g. http", "jps.web.root=" + WEB_FILE_ROOT, "",
-            "#User Web files local folder\n#intended for a user of a packed system\n#no drive letter, start with '/' = absolute path, else relative to start folder\n#e.g. /my-local-path/my-http, my-http", "#jps.user.web.local.root=", "",
+            "#System Web files root folder\n#intended for the system web app\n#no drive letter, start with '/' = absolute path, else relative to jar or to start folder\n#DO NOT change unless absolutely necessary", "jps.web.root=" + WEB_FILE_ROOT, "",
+            "#User Web files local folder\n#intended for web app customization\n#no drive letter, start with '/' = absolute path, else relative to start folder\n#e.g. /my-local-path/user-http, user-http", "#jps.user.web.local.root=user-http", "",
             "#WebApp main Page", "jps.webapp.main.page=/workbench.html", "",
             "#Web content cache mode", "jps.web.cache.load.onstartup=" + FALSE, "",
             "#Web content caching enabled", "jps.web.cache.caching.enabled=" + TRUE, "",
-            "#Extensions enabled", "jps.extensions.enabled=" + TRUE, "",
             "#Extensions root folder name", "jps.extension.root=" + EXTENSION_ROOT, "",
             "#Extensions bin folder name", "jps.extension.bin=" + EXTENSION_BIN, "",
             "#Extensions data folder name", "jps.extension.data=" + EXTENSION_DATA, "",
-            "#Extensions auto load file name", "jps.extensions.autoload.file=" + EXTENSION_AUTOLOAD_FILE, "",
             "#Command task worker", "jps.command.task.worker=10", "",
             "#Workspace root folder", "jps.workspace.root=" + WORKSPACE_ROOT, "",
             "#Data root folder", "jps.data.root=" + DATA_ROOT, "",
@@ -95,10 +92,6 @@ public class AppConfig {
             "#WebSocket max upstream size", "jps.websocket.max.upstream.size=65000", "",
             "#WebSocket Task worker threads", "jps.websocket.task.worker=10", "",
             "#WebService url root", "jps.webservice.url.root=/webapi", "",
-            "#Server enabled", "jps.server.enabled=" + TRUE, "",
-            "#WebService enabled", "jps.webservice.enabled=" + TRUE, "",
-            "#WebSocket enabled", "jps.websocket.enabled=" + TRUE, "",
-            "#Server autostart", "jps.server.autostart=" + TRUE, "",
             "#Standard encoding", "jps.standard.encoding=UTF-8", "",
             "#Windows shell encoding", "jps.win.shell.encoding=Cp850", "",
             "#Unix shell encoding", "jps.unix.shell.encoding=ISO8859_1", "",
@@ -169,10 +162,6 @@ public class AppConfig {
         return props.getProperty("jps.extension.data", EXTENSION_DATA);
     }
 
-    public String getExtensionsAutoloadFileName() {
-        return props.getProperty("jps.extensions.autoload.file", EXTENSION_AUTOLOAD_FILE);
-    }
-
     public String getWorkspaceRoot() {
         return props.getProperty("jps.workspace.root", WORKSPACE_ROOT);
     }
@@ -229,32 +218,12 @@ public class AppConfig {
         return props.getProperty("jps.webservice.url.root", "/webapi");
     }
 
-    public boolean isExtensionsEnabled() {
-        return Boolean.parseBoolean(props.getProperty("jps.extensions.enabled", FALSE));
-    }
-
     public boolean isJavaScriptEnabled() {
         return Boolean.parseBoolean(props.getProperty("jps.javascript.enabled", FALSE));
     }
 
     public boolean isJavaScriptDebugEnabled() {
         return Boolean.parseBoolean(props.getProperty("jps.javascript.debug.enabled", FALSE));
-    }
-
-    public boolean isServerEnabled() {
-        return Boolean.parseBoolean(props.getProperty("jps.server.enabled", TRUE));
-    }
-
-    public boolean isWebServiceEnabled() {
-        return Boolean.parseBoolean(props.getProperty("jps.webservice.enabled", TRUE));
-    }
-
-    public boolean isWebSocketEnabled() {
-        return Boolean.parseBoolean(props.getProperty("jps.websocket.enabled", TRUE));
-    }
-
-    public boolean isServerAutostart() {
-        return Boolean.parseBoolean(props.getProperty("jps.server.autostart", TRUE));
     }
 
     public boolean hasAppProfile() {

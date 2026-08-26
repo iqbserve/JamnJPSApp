@@ -7,7 +7,7 @@
 
     <parent>
         <groupId>iqb.jps</groupId>
-        <artifactId>jpsapp-parent</artifactId>
+        <artifactId>jaman-jpsapp-parent</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
@@ -23,30 +23,29 @@
         <dependency>
             <groupId>iqb.jps</groupId>
             <artifactId>jpsapp-boot</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>iqb.jps</groupId>
             <artifactId>jpsapp-core</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>iqb.jps</groupId>
             <artifactId>jamn-server</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <!-- GraalVM Polyglot API -->
         <dependency>
             <groupId>org.graalvm.polyglot</groupId>
             <artifactId>polyglot</artifactId>
-            <version>24.1.0</version>
         </dependency>
         <!-- GraalVM JavaScript Engine (Community Edition) -->
         <dependency>
             <groupId>org.graalvm.polyglot</groupId>
             <artifactId>js-community</artifactId>
-            <version>24.1.0</version>
             <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>iqb.jps</groupId>
+            <artifactId>jaman-jpswebapp</artifactId>
         </dependency>
     </dependencies>
 
@@ -55,7 +54,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven.compiler.plugin.version}</version>
                 <configuration>
                     <release>${java.version}</release>
                 </configuration>
@@ -63,7 +61,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>${maven.jar.plugin.version}</version>
                 <executions>
                     <execution>
                         <id>default-jar</id>
@@ -75,7 +72,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>${maven.assembly.plugin.version}</version>
                 <configuration>
                     <descriptors>
                         <descriptor>${assembly.descriptor}</descriptor>

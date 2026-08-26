@@ -4,6 +4,7 @@ package iqb.jps.srvcomp;
 
 import iqb.jps.JamnServer.HttpHeader.FieldValue;
 import iqb.jps.JamnServer.HttpHeader.Status;
+import iqb.jps.annotation.WebResource;
 import iqb.jps.annotation.WebService;
 
 import java.lang.reflect.InvocationTargetException;
@@ -13,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -24,6 +26,7 @@ import iqb.jps.JamnServer;
 import iqb.jps.JamnServer.RequestMessage;
 import iqb.jps.JamnServer.ResponseMessage;
 import iqb.jps.core.JsonTool;
+import iqb.jps.core.WebResourceRegistry;
 import iqb.jps.core.WebServiceRegistry;
 
 /**
@@ -43,6 +46,7 @@ public class WebServiceProvider implements JamnServer.ContentProvider, WebServic
 
     protected JsonTool jsonTool;
     protected UnaryOperator<String> placeholderResolver = text -> text;
+    protected Optional<WebResourceRegistry> webResourceRegistry = Optional.empty();
     
     /**
      * A map holding all registered services.
@@ -60,6 +64,13 @@ public class WebServiceProvider implements JamnServer.ContentProvider, WebServic
      */
     public WebServiceProvider setPlaceholderResolver(UnaryOperator<String> resolver) {
         placeholderResolver = resolver;
+        return this;
+    }
+
+    /**
+     */
+    public WebServiceProvider setWebResourceRegistry(WebResourceRegistry webResourceRegistry) {
+        this.webResourceRegistry = Optional.ofNullable(webResourceRegistry);
         return this;
     }
 
@@ -101,6 +112,17 @@ public class WebServiceProvider implements JamnServer.ContentProvider, WebServic
                     throw new WebServiceDefinitionException(
                             String.format("WebService Path of [%s] already defined for [%s]", serviceCart.getName(),
                                     serviceRegistry.get(serviceCart.path).getName()));
+                }
+            } else if (serviceMethod.isAnnotationPresent(WebResource.class) && webResourceRegistry.isPresent()) {
+                WebResource resourceAnno = serviceMethod.getDeclaredAnnotation(WebResource.class);
+                String path = placeholderResolver.apply(resourceAnno.path());
+                try {
+                    byte[] data = (byte[]) serviceMethod.invoke(serviceInstance);
+                    webResourceRegistry.get().registerResource(path, data);
+                    LOG.debug("WebResource installed [{}] at [{}]", serviceMethod.getName(), path);
+                } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                    throw new WebServiceDefinitionException(
+                            String.format("Failed to register WebResource [%s] at [%s]", serviceMethod.getName(), path), e);
                 }
             }
         }

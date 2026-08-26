@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import iqb.jps.core.JsonTool;
+import iqb.jps.annotation.WebResource;
 import iqb.jps.annotation.WebService;
 import iqb.jps.appcomp.ExtensionHandler.ExtensionInstanceContext;
 
@@ -79,6 +80,13 @@ public class DBConnectionExtension {
             response.setStatusError(String.format("Failed to save DB Connections [%s]", e));
         }
         return response.setStatusOk();
+    }
+
+    /**
+     */
+    @WebResource(path = "/app/features/db-connections.mjs")
+    public byte[] getWebComponent() throws IOException {
+       return getClass().getResourceAsStream("/db-connections.mjs").readAllBytes();
     }
 
     /********************************************************************************/

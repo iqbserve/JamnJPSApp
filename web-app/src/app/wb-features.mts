@@ -5,6 +5,7 @@ import { WorkView } from 'core/view-classes.mjs';
 import { CommandDef } from 'core/data-classes.mjs';
 import { LazyFunction, typeUtil } from 'core/tools.mjs';
 import { WorkbenchViewManager } from 'core/view-manager.mjs';
+import { WbExtensionFeatures } from 'app/wb-extension-features.mjs';
 
 /* Types */
 import type { DynamicFunction } from 'types/commons';
@@ -12,7 +13,7 @@ import type { DynamicFunction } from 'types/commons';
 /**
  * The module provides the user functionalities of the app
  */
-const WbFeatures: Record<string, DynamicFunction> = {
+const WbFeatures: Record<string, DynamicFunction> = { 
     systemLogin: new LazyFunction("app/workbench.mjs", "processSystemLogin").setReturnFunctionMode(),
 
     systemInfos: new LazyFunction("features/system-infos.mjs", "getView"),
@@ -34,14 +35,13 @@ const WbFeatures: Record<string, DynamicFunction> = {
     cmdSampleExtension: new LazyFunction("features/command.mjs", "getView",
         [
             "cmdSampleExtensionView",
-            new CommandDef("Sample: [ java extension command ]", "runext", "sample.Command")
+            new CommandDef("Sample: [ java extension command ]", "runext", "sample-command")
                 .setOption("args", true)
         ]
     ),
 
-    toolsDBConnections: new LazyFunction('features/db-connections.mjs', "getView"),
     toolsJSPlayground: new LazyFunction('features/js-playground.mjs', "getView")
-}
+, ...WbExtensionFeatures};
 
 /**
  */

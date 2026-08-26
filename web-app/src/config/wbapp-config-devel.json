@@ -25,10 +25,6 @@
 			"icon": "tools",
 			"items": [
 				{
-					"text": "DB Connections",
-					"feature": "toolsDBConnections"
-				},
-				{
 					"text": "JS Playground",
 					"feature": "toolsJSPlayground"
 				}

@@ -16,6 +16,6 @@ The project combines ideas and experiences from the outdated first version of Ja
 
 How ever - it remains a playground for experimenting with techniques and designs. But the goals have remained the same - lightweight tools, independence, and compactness.
 <br>
-### Workbench Web App - <a href="https://wbapp.iqbserve.de" target="_blank">Demo</a>
+### Workbench Web App - <a href="https://wbapp.iqbserve.de" target="_blank">Demo</a> - <a href="https://github.com/iqbserve/JamnJPSApp/tree/master/web-app" target="_blank">Project</a> 
 
 #### <a href="https://github.com/iqbserve/JamnJPSApp?tab=License-1-ov-file">Disclaimer</a>

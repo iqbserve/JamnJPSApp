@@ -5,12 +5,19 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
+	<parent>
+		<groupId>iqb.jps</groupId>
+		<artifactId>jaman-jpsapp-project-parent</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+		<relativePath>../pom.xml</relativePath>
+	</parent>
+
 	<groupId>iqb.jps</groupId>
-	<artifactId>jpsapp-parent</artifactId>
+	<artifactId>jaman-jpsapp-parent</artifactId>
 	<packaging>pom</packaging>
 	<version>0.0.1-SNAPSHOT</version>
 
-	<name>JPSApp Project</name>
+	<name>JPSApp Server Project</name>
 	<description>${jps.app.description}</description>
 	<url>${project.url}</url>
 	
@@ -41,21 +48,6 @@
 
 		<!-- **/* to include all from /http-->
 		<jps.web.resources>**/*</jps.web.resources>
-
-		<java.version>25</java.version>
-
-		<junit.jupiter.version>6.0.3</junit.jupiter.version>
-		<maven.surefire.plugin.version>3.5.4</maven.surefire.plugin.version>
-
-		<maven.compiler.plugin.version>3.15.0</maven.compiler.plugin.version>
-		<maven.jar.plugin.version>3.4.0</maven.jar.plugin.version>
-		<maven.source.plugin.version>3.3.1</maven.source.plugin.version>
-		<maven.dependency.plugin.version>3.6.0</maven.dependency.plugin.version>
-		<maven.antrun.plugin.version>3.2.0</maven.antrun.plugin.version>
-		<maven.assembly.plugin.version>3.6.0</maven.assembly.plugin.version>
-
-		<maven.compiler.source>${java.version}</maven.compiler.source>
-		<maven.compiler.target>${java.version}</maven.compiler.target>
 	</properties>
 
 	<profiles>
@@ -73,6 +65,7 @@
 		<module>core</module>
 		<module>jamn-server</module>
 		<module>app</module>
+		<module>../web-app</module>
 	</modules>
 
 </project>

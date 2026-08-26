@@ -64,3 +64,12 @@ export type DialogMessage = {
     message: string;
     data?: string;
 }
+
+/**
+ * Sidebar item definition for extensions.
+ */
+export type ExtensionSidebarItem = {
+    topic: string;
+    icon?: string;
+    items: { text: string, feature: string }[];
+};

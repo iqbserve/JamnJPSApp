@@ -33,7 +33,22 @@
 	"settings": {
 		"java.configuration.updateBuildConfiguration": "automatic",
 		"java.debug.settings.forceBuildBeforeLaunch": false,
+		"java.import.exclusions": [
+			"**/server-app/app/workspace/**"
+		],
+		"maven.excludedFolders": [
+			"**/server-app/app/workspace/**"
+		],
 		"maven.view": "hierarchical",
+		"files.exclude": {
+			"**/server-app/app/workspace": true
+		},
+		"search.exclude": {
+			"**/server-app/app/workspace/**": true
+		},
+		"files.watcherExclude": {
+			"**/server-app/app/workspace/**": true
+		},
 		"maven.terminal.favorites": [
 			{
 				"alias": "Clean-install",

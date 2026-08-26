@@ -15,14 +15,6 @@
                 <include>**/*</include>
             </includes>
         </fileSet>
-         <fileSet>
-            <directory>${project.basedir}/http</directory>
-            <outputDirectory>/http</outputDirectory>
-            <useDefaultExcludes>false</useDefaultExcludes>
-            <includes>
-                <include>${jps.web.resources}</include>
-            </includes>
-        </fileSet>
     </fileSets>
 
     <dependencySets>
@@ -33,6 +25,16 @@
             <unpack>true</unpack>
             <includes>
                 <include>iqb.jps:jpsapp-boot</include>
+            </includes>
+        </dependencySet>
+
+        <dependencySet>
+            <outputDirectory>/</outputDirectory>
+            <useProjectArtifact>false</useProjectArtifact>
+            <scope>runtime</scope>
+            <unpack>true</unpack>
+            <includes>
+                <include>iqb.jps:jaman-jpswebapp</include>
             </includes>
         </dependencySet>
 

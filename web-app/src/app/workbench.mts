@@ -11,6 +11,8 @@ import { NotificationHandler, Notification, type NotificationListener } from 'co
 import { WbProperties } from 'config/wbapp-properties.mjs';
 import { WbAppConfig } from 'config/wbapp-config.mjs';
 import { callFeature } from 'app/wb-features.mjs';
+import { WbExtensionSidebarItems } from 'app/wb-extension-features.mjs';
+
 import * as Webapi from 'app/core/webapi.mjs';
 import * as Icons from 'core/icons.mjs';
 import { registerUIWebComponents, WbTitlebar, WbStatusline, WbSidebar } from 'app/core/uicomponents.mjs';
@@ -179,6 +181,29 @@ function applyConfig(configJson: string, authenticated = false) {
 		WbProperties.applyGroup("systemInfo", appConfig.getSystemInfo());
 		systemInfo = appConfig.getSystemInfo();
 	}
+
+	applyExtensionsToConfig(appConfig);
+}
+
+/**
+ */
+function applyExtensionsToConfig(config: WbAppConfig) {
+	// apply extension sidebar items to the app config
+	// so they get installed in the sidebar
+	WbExtensionSidebarItems.forEach((extItem) => {
+		const topic = config.getTopicList().find((topic) => topic.text === extItem.topic);
+		if (topic) {
+			topic.items.push(...extItem.items);
+		}else{
+			//create a new topic entry if it does not exist
+			let sbarTopic = {
+				text: extItem.topic,
+				icon: extItem.icon || "",
+				items: extItem.items
+			};
+			config.getTopicList().push(sbarTopic);
+		}
+	});
 }
 
 /**

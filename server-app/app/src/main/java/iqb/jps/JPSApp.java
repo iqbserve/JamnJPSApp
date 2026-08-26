@@ -11,14 +11,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.logging.LogManager;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,9 +91,7 @@ public class JPSApp {
             initialize(args);
 
             if (appConfig.hasAppProfile()) {
-                if (appConfig.isServerAutostart() && server != null) {
-                    server.start();
-                }
+                server.start();
             } else {
                 // for later use
             }
@@ -171,18 +165,23 @@ public class JPSApp {
     private void initConfig(Map<String, String> argsMap) throws IOException {
         InputStream inputStream = null;
         Path filePath = getHomePath("jps.properties");
+        String defaultConfigSrc = AppConfig.getDefaultConfig(appName);
+        // create default as base
+        appConfig = new AppConfig(new StringReader(defaultConfigSrc));
 
         if (Files.exists(filePath)) {
             inputStream = Files.newInputStream(filePath);
-            appConfig = new AppConfig(inputStream);
+            AppConfig userAppConfig = new AppConfig(inputStream);
+            // put all user config properties into the base config, overwriting defaults
+            appConfig.getProperties().putAll(userAppConfig.getProperties());
             LOG.info("Application config read from: [{}]", filePath);
         } else {
-            String defaultConfig = AppConfig.getDefaultConfig(appName);
-            Files.writeString(filePath, defaultConfig, StandardOpenOption.CREATE);
-            appConfig = new AppConfig(new StringReader(defaultConfig));
+            // just use the default base config and write to file for user to edit
+            Files.writeString(filePath, defaultConfigSrc, StandardOpenOption.CREATE);
             LOG.warn("NO Application config found. Created Default config: [{}]", filePath);
         }
 
+        // take over build properties
         Tool.getPropertiesFrom(buildProperties, new String[] { "jps.javascript.enabled" }, appConfig.getProperties());
         appConfig.getBuildProperties().putAll(buildProperties);
         appConfig.getProperties().putAll(argsMap);
@@ -220,7 +219,8 @@ public class JPSApp {
     private void initContentProvider() throws IOException, URISyntaxException {
 
         // create a file cache for the web content provider
-        ResourceFileCache<WebFile> resourceCache = new ResourceFileCache<WebFile>(WebContentProvider::newWebFile, appConfig);
+        ResourceFileCache<WebFile> resourceCache = new ResourceFileCache<WebFile>(WebContentProvider::newWebFile,
+                appConfig);
 
         // create provider
         webContentProvider = new WebContentProvider(resourceCache);
@@ -245,7 +245,8 @@ public class JPSApp {
     private void initWebServiceProvider() {
         webServiceProvider = new WebServiceProvider()
                 .setJsonTool(jsonTool)
-                .setPlaceholderResolver(text -> Tool.resolvePlaceholder(text, appConfig.getProperties()));
+                .setPlaceholderResolver(text -> Tool.resolvePlaceholder(text, appConfig.getProperties()))
+                .setWebResourceRegistry(webContentProvider);
 
         server.addContentProvider(ContentProvider.WEB_SERVICE, webServiceProvider);
 
@@ -283,7 +284,7 @@ public class JPSApp {
             jsProvider.initialize();
             javaScript = Optional.of(jsProvider);
             LOG.info("JavaScript provider installed with script root [{}]", scriptPath);
-        }else {
+        } else {
             LOG.info("Server side JavaScript disabled");
         }
     }
@@ -297,15 +298,11 @@ public class JPSApp {
             Tool.ensureSubDir(appConfig.getExtensionData(), rootPath);
             Tool.ensureSubDir(appConfig.getWorkspaceRoot(), appHome);
 
-            Path filePath = Paths.get(rootPath.toString(), "ExtensionDefFileTemplate.json");
+            Path filePath = Paths.get(rootPath.toString(),
+                    "ExtensionDefFile.json.template");
             if (!Files.exists(filePath)) {
                 String template = jsonTool.toPrettyString(new ExtensionHandler.ExtensionDef());
                 Files.writeString(filePath, template, StandardOpenOption.CREATE);
-            }
-
-            filePath = Paths.get(rootPath.toString(), appConfig.getExtensionsAutoloadFileName());
-            if (!Files.exists(filePath)) {
-                Files.writeString(filePath, "[]", StandardOpenOption.CREATE);
             }
 
             extensionHandler = new ExtensionHandler(rootPath, this);
@@ -318,39 +315,10 @@ public class JPSApp {
 
     /**
      */
-    private void loadExtensions() {
-        List<String> errors = new ArrayList<>();
-        try {
-            String rootPath = extensionHandler.getRootPath().toString();
-            Path filePath = Paths.get(rootPath, appConfig.getExtensionsAutoloadFileName());
+    private void initAppServicesAndObjects() throws WebServiceDefinitionException, IOException {
 
-            String autoloadSrc = new String(Files.readAllBytes(filePath));
-            List<String> autoLoadList = Arrays.asList(jsonTool.toObject(autoloadSrc, String[].class));
-            for (String name : autoLoadList) {
-                try { // NOSONAR
-                    extensionHandler.loadExtension(name);
-                } catch (Exception e) {
-                    errors.add(e.toString());
-                }
-            }
-
-            if (!errors.isEmpty()) {
-                String msg = String.format("Extension installation error(s): %s - Hint: check the 'extensions-auto-load.json' file and ensure that all DEF filenames are written in lowercase", errors);
-                LOG.error(msg);
-            }
-
-            LOG.info("Extensions from autoload file installed [{}]", autoLoadList.size());
-        } catch (Exception e) {
-            throw new UncheckedAppException("Error installing autoload extensions", e);
-        }
-    }
-
-    /**
-     */
-    private void initAppServicesAndObjects() throws WebServiceDefinitionException {
-        this.extensionHandler.setWebServiceRegistry(this.webServiceProvider);
-
-        loadExtensions();
+        extensionHandler.setWebServiceRegistry(this.webServiceProvider);
+        extensionHandler.loadAllExtensions();
 
         wsoMessageDispatcher
                 .addTaskProcessor(new RunJavaScriptTaskProcessor(javaScript))
