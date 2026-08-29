@@ -18,4 +18,18 @@ How ever - it remains a playground for experimenting with techniques and designs
 <br>
 ### Workbench Web App - <a href="https://wbapp.iqbserve.de" target="_blank">Demo</a> - <a href="https://github.com/iqbserve/JamnJPSApp/tree/master/web-app" target="_blank">Project</a> 
 
+#### Download and test run
+
+Prerequisites are java 25 and maven 3.9 on the path
+
+```code
+$ git clone https://github.com/iqbserve/JamnJPSApp.git
+$ cd JamnJPSApp
+$ mvn install
+$ run.cmd
+
+open a browser window and call
+localhost:9090
+```
+
 #### <a href="https://github.com/iqbserve/JamnJPSApp?tab=License-1-ov-file">Disclaimer</a>
