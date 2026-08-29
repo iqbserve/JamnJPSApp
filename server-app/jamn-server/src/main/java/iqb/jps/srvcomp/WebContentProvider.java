@@ -2,16 +2,12 @@
 package iqb.jps.srvcomp;
 
 import iqb.jps.JamnServer;
-
 import iqb.jps.JamnServer.HttpHeader.Status;
 import iqb.jps.JamnServer.MimeType;
-
 import java.io.IOException;
 import java.util.function.BiFunction;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import iqb.jps.JamnServer.RequestMessage;
 import iqb.jps.JamnServer.ResponseMessage;
 import iqb.jps.core.HelperTool;
@@ -73,8 +69,6 @@ public class WebContentProvider implements JamnServer.ContentProvider, WebResour
             if (request.isMethod("GET")) {
                 webFile = getWebFile(request, response);
 
-                doExtendedContentProcessing(webFile, request, response);
-
                 if (!webFile.isEmpty()) {
                     response.writeToContent(webFile.getData());
                 } else {
@@ -131,13 +125,6 @@ public class WebContentProvider implements JamnServer.ContentProvider, WebResour
         return webFile;
     }
 
-    /**
-    */
-    protected void doExtendedContentProcessing(WebFile webFile, RequestMessage request,
-            ResponseMessage response) {
-        // do nothing by default
-    }
-
     /*********************************************************
      * Provider classes and interfaces.
      *********************************************************/
@@ -156,10 +143,6 @@ public class WebContentProvider implements JamnServer.ContentProvider, WebResour
 
         public WebFile(byte[] data) {
             this.data = data;
-        }
-
-        public String getId() {
-            return requestPath;
         }
 
         public boolean isEmpty() {

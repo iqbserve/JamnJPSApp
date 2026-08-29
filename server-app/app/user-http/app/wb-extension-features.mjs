@@ -13,16 +13,18 @@ import { LazyFunction } from 'core/tools.mjs';
 
 // provide feature definitions
 export const WbExtensionFeatures = {
-    // feature paths must take in concern if a importmap is used
+    // feature paths must take in concern that an importmap is used
     toolsDBConnections: new LazyFunction('features/db-connections.mjs', "getView")
 };
 
 // provide corresponding sidebar item definitions
 // as they are used in the JSON config files
-export const WbExtensionSidebarItems =  [
-    {topic: "Tools", items: [
-        { text: "My DB Connections", feature: "toolsDBConnections" }
-    ]}
+export const WbExtensionSidebarItems = [
+    {
+        topic: "Tools", items: [
+            { text: "My DB Connections", feature: "toolsDBConnections" }
+        ]
+    }
 ];
 
 Logger.info(`Workbench extension features installed`);

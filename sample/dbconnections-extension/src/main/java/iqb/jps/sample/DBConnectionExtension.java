@@ -13,9 +13,9 @@ import java.util.List;
 import java.util.Map;
 
 import iqb.jps.core.JsonTool;
+import iqb.jps.extapi.ExtensionInstanceContext;
 import iqb.jps.annotation.WebResource;
 import iqb.jps.annotation.WebService;
-import iqb.jps.appcomp.ExtensionHandler.ExtensionInstanceContext;
 
 /**
  */

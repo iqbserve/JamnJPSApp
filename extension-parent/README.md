@@ -2,13 +2,13 @@
 
 This module provides a Maven parent for standalone extension projects that target the JamnJPSApp runtime.
 
-Goal: build extension JARs without cloning or building the full JamnJPSApp.
+Goal: build extension JARs without cloning or building the JamnJPSApp itself.
 
 ## Java Extensions usage
 
-Extensions can realize any kind of user functionality. They can get called as "commands" with string argument array. Or as WebServices with string serializable in- and output objects (see: JamnJPSApp /sample project). 
+Extensions can realize any kind of user functionality. They can get called as "commands" with a string argument array. Or as WebServices with string serializable in- and output objects (see: JamnJPSApp /sample project). 
 
-## Intended pom Usage
+## Intended pom usage
 
 Use this parent pom in an external extension project:
 
@@ -20,13 +20,13 @@ Use this parent pom in an external extension project:
 </parent>
 ```
 
-Then add a dependency on the target app artifact (version managed by the parent):
+If intendet or needed add a dependency to the JPSApp extension api (version managed by the parent):
 
 ```xml
 <dependencies>
   <dependency>
     <groupId>iqb.jps</groupId>
-    <artifactId>${jps.extension.jar.artifactId}</artifactId>
+    <artifactId>${jps.extension.api.artifactId}</artifactId>
     <scope>provided</scope>
   </dependency>
 </dependencies>
@@ -35,7 +35,7 @@ Then add a dependency on the target app artifact (version managed by the parent)
 ## Key Properties
 
 - `jps.target.app.version`: target JamnJPSApp version for extension compatibility
-- `jps.extension.jar.artifactId`: app artifact exposed to extension compile classpath (default: `jamn-JPSApp`)
+- `jps.extension.api.artifactId`: core API artifact exposed to extension compile classpath (default: `jpsapp-core`)
 - `jps.extensions.bin`: destination path used by optional copy/deploy tasks
 
 External projects can override these properties in their own `pom.xml`.
@@ -61,7 +61,7 @@ External projects can override these properties in their own `pom.xml`.
   <dependencies>
     <dependency>
       <groupId>iqb.jps</groupId>
-      <artifactId>${jps.extension.jar.artifactId}</artifactId>
+      <artifactId>${jps.extension.api.artifactId}</artifactId>
       <scope>provided</scope>
     </dependency>
   </dependencies>
@@ -70,7 +70,7 @@ External projects can override these properties in their own `pom.xml`.
 
 ## Runtime Deployment Model
 
-Once an extension is build copy the extension jar to JamnJPSApp root dir: /extensions/bin
+Once an extension is build copy the extension jar to the JPSApp root dir: /extensions/bin
 
 Create a minimum extension json def file "extension-name.json" in root dir: /extensions
 
@@ -86,17 +86,17 @@ The name part (extension-name) of this file will get the unique id name of the e
 ```
 
 
-By default the App will load all extensions defined in the extensions root folder at startup. 
+By default the App will load all extensions defined in the extensions root folder at startup. That is why extensions must im minimum provide a publich constructor. The JPSApp extension api does NOT require a specific lifecycle from extensions. The only entry point is the instantiaton. The def file just provides a singleton=true/false property. 
 
 ## WebApp customization interface
 
 If the extension also provides a WebApp feature one more step is necessary to tell the WebApp about the new feature and to plug it into the WebApp side bar.
 
-This has to be done by using javascript and a local user defined web root folder. To enable this intercepting define the server app property e.g. like
+This has to be done by using javascript and a local user defined web root folder. To enable this intercepting define the JPSApp property e.g. like
 
 - jps.user.web.local.root = user-http
 
-where "user-http" folder is expected to be in the start/root directory of the server app. Absolut pathes starting with a slash 
+where "user-http" folder is expected to be in the start/root directory of the JPSApp. Absolut pathes starting with a slash 
 
 - /my-project/my-http-files/my-http
 

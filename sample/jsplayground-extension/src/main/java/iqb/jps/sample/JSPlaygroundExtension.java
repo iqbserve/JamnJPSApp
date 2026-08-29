@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import iqb.jps.annotation.WebService;
-import iqb.jps.appcomp.ExtensionHandler.ExtensionInstanceContext;
+import iqb.jps.extapi.ExtensionInstanceContext;
 
 /**
  */

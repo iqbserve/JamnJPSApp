@@ -25,7 +25,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>iqb.jps</groupId>
-			<artifactId>${jpsapp.artefactid}</artifactId>
+			<artifactId>${jps.extension.api.artifactId}</artifactId>
 		</dependency>
 
 		<dependency>

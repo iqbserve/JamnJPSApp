@@ -23,7 +23,7 @@
 
 	<properties>
 		<jps.target.app.version>${project.version}</jps.target.app.version>
-		<jps.extension.jar.artifactId>jamn-JPSApp</jps.extension.jar.artifactId>
+		<jps.extension.api.artifactId>jpsapp-core</jps.extension.api.artifactId>
 		<jps.extensions.bin>./extensions/bin</jps.extensions.bin>
 	</properties>
 
@@ -31,7 +31,7 @@
 		<dependencies>
 			<dependency>
 				<groupId>iqb.jps</groupId>
-				<artifactId>${jps.extension.jar.artifactId}</artifactId>
+				<artifactId>${jps.extension.api.artifactId}</artifactId>
 				<version>${jps.target.app.version}</version>
 			</dependency>
 		</dependencies>

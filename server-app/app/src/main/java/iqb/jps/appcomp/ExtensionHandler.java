@@ -34,6 +34,7 @@ import iqb.jps.core.AppConfig;
 import iqb.jps.core.HelperTool;
 import iqb.jps.core.JsonTool;
 import iqb.jps.core.WebServiceRegistry;
+import iqb.jps.extapi.ExtensionInstanceContext;
 
 /**
  * <pre>
@@ -85,6 +86,10 @@ public class ExtensionHandler {
     }
 
     /**
+     * <pre>
+     * The method scans the extensions directory for extension definition files 
+     * and tries to load the found extensions.
+     * </pre>
      */
     public void loadAllExtensions() throws IOException {
         List<String> names = new ArrayList<>();
@@ -246,6 +251,17 @@ public class ExtensionHandler {
 
     /**
      */
+    protected ExtensionInstanceContext newExtensionInstanceContext(Consumer<String> outputConsumer) {
+        return new ExtensionInstanceContext(
+                outputConsumer,
+                Paths.get(pathBase.toString(), config.getExtensionData()),
+                json,
+                config,
+                encoding);
+    }
+
+    /**
+     */
     protected class ExtensionCartridge {
         protected String name;
         protected ExtensionDef def;
@@ -369,8 +385,7 @@ public class ExtensionHandler {
                     ctx.put("output", outputConsumer);
                     newInstance = constructor.newInstance(ctx);
                 } else if (this.contextClass == ExtensionInstanceContext.class) {
-                    ExtensionInstanceContext ctx = new ExtensionInstanceContext(outputConsumer,
-                            Paths.get(pathBase.toString(), config.getExtensionData()), jpsApp);
+                    ExtensionInstanceContext ctx = newExtensionInstanceContext(outputConsumer);
                     newInstance = constructor.newInstance(ctx);
                 }
             } else {
@@ -482,8 +497,7 @@ public class ExtensionHandler {
                             field.apply("className", this.className),
                             field.apply("runMethod", this.runMethod),
                             field.apply("scope", this.scope),
-                            field.apply("singleton", Boolean.toString(this.singleton))
-                    ));
+                            field.apply("singleton", Boolean.toString(this.singleton))));
         }
 
         @JsonIgnore
@@ -519,42 +533,6 @@ public class ExtensionHandler {
         public void setResult(String result) {
             this.result = result;
         }
-    }
-
-    /**
-     */
-    public static class ExtensionInstanceContext {
-        // the output consumer is used to forward extension output
-        private Consumer<String> outputConsumer = null;
-        private final JPSApp jpsApp;
-        private final Path dataPath;
-
-        public ExtensionInstanceContext(Consumer<String> outputConsumer, Path dataPath, JPSApp jpsApp) {
-            this.outputConsumer = outputConsumer;
-            this.jpsApp = jpsApp;
-            this.dataPath = dataPath;
-        }
-
-        public Consumer<String> getOutputConsumer() {
-            return outputConsumer;
-        }
-
-        public JsonTool getJsonTool() {
-            return jpsApp.getJsonTool();
-        }
-
-        public AppConfig getAppConfig() {
-            return jpsApp.getAppConfig();
-        }
-
-        public Path getDataPath() {
-            return dataPath;
-        }
-
-        public Charset getEncoding() {
-            return jpsApp.getStandardEncoding();
-        }
-
     }
 
     /**

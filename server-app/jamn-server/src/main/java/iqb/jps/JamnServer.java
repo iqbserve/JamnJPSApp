@@ -179,7 +179,6 @@ public class JamnServer {
         }
 
         if (requestExecutor == null || requestExecutor.isShutdown()) {
-            // one client socket blocks its task for the whole connection lifetime (incl. WebSocket) - virtual threads avoid worker starvation
             requestExecutor = Executors.newVirtualThreadPerTaskExecutor();
         }
         // virtual threads are unbounded - cap concurrently open connections explicitly

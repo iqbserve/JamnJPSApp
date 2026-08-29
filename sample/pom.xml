@@ -22,7 +22,7 @@
 	<url>https://github.com/iqbserve/JamnJPSApp</url>
 
 	<properties>
-		<jpsapp.artefactid>${jps.extension.jar.artifactId}</jpsapp.artefactid>
+		<jpsapp.artefactid>${jps.extension.api.artifactId}</jpsapp.artefactid>
 
 		<jps.extensions.bin>../../server-app/app/extensions/bin</jps.extensions.bin>
 	    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

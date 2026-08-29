@@ -166,17 +166,15 @@ public class JPSApp {
         InputStream inputStream = null;
         Path filePath = getHomePath("jps.properties");
         String defaultConfigSrc = AppConfig.getDefaultConfig(appName);
-        // create default as base
-        appConfig = new AppConfig(new StringReader(defaultConfigSrc));
 
         if (Files.exists(filePath)) {
             inputStream = Files.newInputStream(filePath);
-            AppConfig userAppConfig = new AppConfig(inputStream);
+            appConfig = new AppConfig(inputStream);
             // put all user config properties into the base config, overwriting defaults
-            appConfig.getProperties().putAll(userAppConfig.getProperties());
             LOG.info("Application config read from: [{}]", filePath);
         } else {
             // just use the default base config and write to file for user to edit
+            appConfig = new AppConfig(new StringReader(defaultConfigSrc));
             Files.writeString(filePath, defaultConfigSrc, StandardOpenOption.CREATE);
             LOG.warn("NO Application config found. Created Default config: [{}]", filePath);
         }
@@ -187,6 +185,10 @@ public class JPSApp {
         appConfig.getProperties().putAll(argsMap);
 
         standardEncoding = Charset.forName(appConfig.getStandardEncoding());
+
+        Tool.getPropertiesFrom(appConfig.getProperties(),
+                new String[] { "jps.shutdown.warnings.enabled" },
+                System.getProperties());
     }
 
     /**
@@ -317,13 +319,18 @@ public class JPSApp {
      */
     private void initAppServicesAndObjects() throws WebServiceDefinitionException, IOException {
 
+        // connect the extension handler to web service provider
+        // and load all available extensions
         extensionHandler.setWebServiceRegistry(this.webServiceProvider);
         extensionHandler.loadAllExtensions();
 
+        // add task processors to the web socket system
+        // these processors will handle the incoming web socket messages
         wsoMessageDispatcher
                 .addTaskProcessor(new RunJavaScriptTaskProcessor(javaScript))
                 .addTaskProcessor(new RunExtensionTaskProcessor(extensionHandler));
 
+        // register app web services
         webServiceProvider.registerServices(() -> WebAppConfigService.getInstance(this));
 
         LOG.info("App Services and objects installed");

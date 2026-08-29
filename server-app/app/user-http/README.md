@@ -1,4 +1,4 @@
-## WebApp customization interface
+## WebApp customization interface (sample)
 
 The WebApp customization root folder as defined in the jps.properties e.g.
 
@@ -10,4 +10,4 @@ The main customization file is
 
 - /app/wb-extension-features.mjs
 
-The original file is empty. It allows to add new features to the WebApp and to add new items to the sidebar.
+The original file in the WebApp is empty. It allows to add new features to the WebApp and to add new items to the sidebar.

@@ -20,36 +20,47 @@ import java.util.stream.Stream;
 /**
  * <pre>
  * A generic resource file cache that loads files from the specified source folders.
+ * The main task is to make web app files available.
  * 
- * Supports loading resources from both the filesystem and a hosting JAR file.
+ * It supports loading resources from both the filesystem and a hosting JAR file.
  * The cache is used by the JamnServer.WebContentProvider as its file system abstraction.
  * 
  * The cache also supports a user root folder for user local development, extensions or customizations.
+ * 
+ * The cache expects a resource path as 
+ *  - a path starting with a slash: "/path/to/resource"
+ * as it is submitted by a http request.
  * 
  * </pre>
  */
 public class ResourceFileCache<T> implements Closeable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ResourceFileCache.class);
-    private static final String httpPrefix = "/";
+    // this separator should not be changed and not used for path creation
+    // it is only used to create the resource path keys in the cache
+    private static final String RESPATH_SPTR = "/";
 
     // cache to store loaded resource files of type <T>
     private final ConcurrentHashMap<String, T> fileCache = new ConcurrentHashMap<>();
 
     private FileSystem fileSystem;
 
+    // the folders or paths from which resources are loaded
+    // defined in the app properties (e.g., jps.web.root and
+    // jps.user.web.local.root)
     private String sourceFolder;
     private String userSourceFolder;
-    // supplier factory function to create T objects from file content
-    private BiFunction<String, byte[], T> cacheObjctSupplier;
+    // the equivalent Path objects for the source folders
     private Path rootPath;
     private Path userRootPath = null;
+    // supplier factory function to create T objects from file content
+    private BiFunction<String, byte[], T> cacheObjctSupplier;
 
     private boolean loadOnStartup = false;
     private boolean isFromJar = false;
     private boolean cachingEnabled = true;
     private boolean userRootEnabled = false;
-    // true only if this instance created the zip file system itself
+    // Only true if this instance created the zip file system itself
     private boolean fileSystemOwned = false;
 
     /**
@@ -73,8 +84,75 @@ public class ResourceFileCache<T> implements Closeable {
 
         LOG.info("Resource cache initialization done: enabled: [{}] startload: [{}] system-root: [{}] user-root: [{}]",
                 cachingEnabled,
-                loadOnStartup, rootPath.toUri(), userRootPath != null ? userRootPath.toUri() : "none");
+                loadOnStartup, rootPath != null ? rootPath.toUri() : "none",
+                userRootPath != null ? userRootPath.toUri() : "none");
+    }
 
+    /**
+     */
+    private void initialize() throws URISyntaxException, IOException {
+
+        initUserRootPath();
+
+        if (sourceFolder != null && !sourceFolder.trim().isEmpty()) {
+            URL resourceUrl = getClass().getClassLoader().getResource(sourceFolder);
+            if (resourceUrl == null) {
+                Path externalPath = Paths.get(sourceFolder);
+                if (Files.exists(externalPath) && Files.isDirectory(externalPath)) {
+                    resourceUrl = externalPath.toUri().toURL();
+                } else {
+                    throw new IllegalArgumentException("Resource folder not found [" + sourceFolder + "]");
+                }
+            }
+
+            // check if the resource URL points to the JAR or to the filesystem
+            URI rootFolderUri = resourceUrl.toURI();
+            isFromJar = rootFolderUri.getScheme().equals("jar");
+
+            // check if running from inside a JAR file or filesystem
+            // (IDE /target/classes)
+            if (isFromJar) {
+                try {
+                    fileSystem = FileSystems.getFileSystem(rootFolderUri);
+                    fileSystemOwned = false;
+                } catch (FileSystemNotFoundException _) {
+                    // If the JAR file system isn't open yet, create it; we own it and may close it
+                    // later
+                    fileSystem = FileSystems.newFileSystem(rootFolderUri, Collections.emptyMap());
+                    fileSystemOwned = true;
+                }
+                rootPath = fileSystem.getPath(sourceFolder);
+            } else {
+                rootPath = Paths.get(rootFolderUri);
+            }
+        }
+    }
+
+    /**
+     * Initializes the user root path if a user source folder is defined in the
+     * configuration.
+     * If defined first resource lookup is in the user root.
+     */
+    private void initUserRootPath() {
+
+        userRootPath = null;
+        userRootEnabled = false;
+
+        if (userSourceFolder != null && !userSourceFolder.trim().isEmpty()) {
+            Path userPath = null;
+            if (userSourceFolder.startsWith("/")) {
+                userPath = Paths.get(userSourceFolder);
+            } else {
+                userPath = Paths.get(Paths.get("").toString(), userSourceFolder);
+            }
+
+            if (Files.exists(userPath) && Files.isDirectory(userPath)) {
+                userRootPath = userPath;
+                userRootEnabled = true;
+            } else {
+                LOG.warn("Defined User Web root path does not exist: [{}]", userPath);
+            }
+        }
     }
 
     /**
@@ -143,9 +221,9 @@ public class ResourceFileCache<T> implements Closeable {
             pathStream.filter(Files::isRegularFile).forEach(path -> {
                 try {
                     byte[] content = Files.readAllBytes(path);
-                    String httpKey = httpPrefix + rootPath.relativize(path).toString().replace("\\", "/");
-                    T resource = cacheObjctSupplier.apply(httpKey, content);
-                    putToCache(httpKey, resource);
+                    String cacheKey = createCacheKeyFor(rootPath, path);
+                    T resource = cacheObjctSupplier.apply(cacheKey, content);
+                    putToCache(cacheKey, resource);
                     resourceCounter.incrementAndGet();
                 } catch (IOException e) {
                     throw new UncheckedIOException("Failed to read file: " + path, e);
@@ -160,16 +238,16 @@ public class ResourceFileCache<T> implements Closeable {
         LOG.info("Loaded [{}] System resource files into cache", resourceCounter.get());
 
         if (userRootEnabled) {
-            resourceCounter.set(0); 
+            resourceCounter.set(0);
             // load user root resources for overwriting
             // walk through the directory tree recursively
             try (Stream<Path> pathStream = Files.walk(userRootPath)) {
                 pathStream.filter(Files::isRegularFile).forEach(path -> {
                     try {
                         byte[] content = Files.readAllBytes(path);
-                        String httpKey = httpPrefix + userRootPath.relativize(path).toString().replace("\\", "/");
-                        T resource = cacheObjctSupplier.apply(httpKey, content);
-                        putToCache(httpKey, resource);
+                        String cacheKey = createCacheKeyFor(userRootPath, path);
+                        T resource = cacheObjctSupplier.apply(cacheKey, content);
+                        putToCache(cacheKey, resource);
                         resourceCounter.incrementAndGet();
                     } catch (IOException e) {
                         throw new UncheckedIOException("Failed to read file: " + path, e);
@@ -197,10 +275,9 @@ public class ResourceFileCache<T> implements Closeable {
             // else do standard lookup
             Path filePath = resolveWithinRoot(rootPath, path);
             byte[] content = Files.readAllBytes(filePath);
-            String httpKey = httpPrefix + rootPath.relativize(filePath).toString().replace("\\", "/");
-
-            resource = cacheObjctSupplier.apply(httpKey, content);
-            putToCache(httpKey, resource);
+            String cacheKey = createCacheKeyFor(rootPath, filePath);
+            resource = cacheObjctSupplier.apply(cacheKey, content);
+            putToCache(cacheKey, resource);
 
         } catch (IOException e) {
             LOG.debug("Resource file not found or not accessible: [{}]", path, e);
@@ -220,14 +297,27 @@ public class ResourceFileCache<T> implements Closeable {
             // because user root is called first and may not contain any files
             if (Files.exists(userFilePath) && Files.isRegularFile(userFilePath)) {
                 byte[] content = Files.readAllBytes(userFilePath);
-                String httpKey = httpPrefix + userRootPath.relativize(userFilePath).toString().replace("\\", "/");
+                String cacheKey = createCacheKeyFor(userRootPath, userFilePath);
 
-                T resource = cacheObjctSupplier.apply(httpKey, content);
-                putToCache(httpKey, resource);
+                T resource = cacheObjctSupplier.apply(cacheKey, content);
+                putToCache(cacheKey, resource);
                 return resource;
             }
         }
         return null;
+    }
+
+    /**
+     * Create the key used by the cache to store files.
+     * The cache key is equivalent to the resource name used to access the resource.
+     * However - there are two situations where the key is needed
+     * - when walking a file root for loading - key must be created from file path
+     * - and when accessing a resource by its name - name is the key
+     * expected to be like: "/path/to/resource"
+     * The function provides a unique generation method.
+     */
+    private String createCacheKeyFor(Path root, Path filePath) {
+        return RESPATH_SPTR + root.relativize(filePath).toString().replace("\\", RESPATH_SPTR);
     }
 
     /**
@@ -236,76 +326,14 @@ public class ResourceFileCache<T> implements Closeable {
      * (e.g. via "../" segments) that would escape that root.
      */
     private Path resolveWithinRoot(Path root, String resourceName) throws IOException {
-        String relative = resourceName.startsWith(httpPrefix) ? resourceName.substring(httpPrefix.length())
+        // use hardcoded 1 because RESPATH_SPTR is always a single character and should
+        // never change
+        String relative = resourceName.startsWith(RESPATH_SPTR) ? resourceName.substring(1)
                 : resourceName;
         Path resolved = root.resolve(relative).normalize();
         if (!resolved.startsWith(root)) {
             throw new IOException("Resource path escapes root folder: " + resourceName);
         }
         return resolved;
-    }
-
-    /**
-     */
-    private void initialize() throws URISyntaxException, IOException {
-
-        initUserRootPath();
-
-        URL resourceUrl = getClass().getClassLoader().getResource(sourceFolder);
-        if (resourceUrl == null) {
-            Path externalPath = Paths.get(sourceFolder);
-            if (Files.exists(externalPath) && Files.isDirectory(externalPath)) {
-                resourceUrl = externalPath.toUri().toURL();
-            } else {
-                throw new IllegalArgumentException("Resource folder not found [" + sourceFolder + "]");
-            }
-        }
-
-        URI rootFolderUri = resourceUrl.toURI();
-        isFromJar = rootFolderUri.getScheme().equals("jar");
-
-        // check if running from inside a JAR file or filesystem
-        // (IDE /target/classes)
-        if (isFromJar) {
-            try {
-                fileSystem = FileSystems.getFileSystem(rootFolderUri);
-                fileSystemOwned = false;
-            } catch (FileSystemNotFoundException _) {
-                // If the JAR file system isn't open yet, create it; we own it and may close it
-                // later
-                fileSystem = FileSystems.newFileSystem(rootFolderUri, Collections.emptyMap());
-                fileSystemOwned = true;
-            }
-            rootPath = fileSystem.getPath(sourceFolder);
-        } else {
-            rootPath = Paths.get(rootFolderUri);
-        }
-    }
-
-    /**
-     * Initializes the user root path if a user source folder is defined in the
-     * configuration.
-     * If defined first resource lookup is in the user root.
-     */
-    private void initUserRootPath() {
-
-        userRootPath = null;
-        userRootEnabled = false;
-
-        if (userSourceFolder != null && !userSourceFolder.trim().isEmpty()) {
-            Path userPath = null;
-            if (userSourceFolder.startsWith("/")) {
-                userPath = Paths.get(userSourceFolder);
-            } else {
-                userPath = Paths.get(Paths.get("").toString(), userSourceFolder);
-            }
-
-            if (Files.exists(userPath) && Files.isDirectory(userPath)) {
-                userRootPath = userPath;
-                userRootEnabled = true;
-            } else {
-                LOG.warn("Defined User Web root path does not exist: [{}]", userPath);
-            }
-        }
     }
 }

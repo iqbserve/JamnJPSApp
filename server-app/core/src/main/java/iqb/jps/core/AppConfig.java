@@ -73,11 +73,12 @@ public class AppConfig {
     private static final String DEFAULT_CONFIG = String.join("\n",
             "#Profile", "jps.profile" + "=app", "",
             "#HTTP Server port", "http.server.port=9090", "",
-            "#System Web files root folder\n#intended for the system web app\n#no drive letter, start with '/' = absolute path, else relative to jar or to start folder\n#DO NOT change unless absolutely necessary", "jps.web.root=" + WEB_FILE_ROOT, "",
-            "#User Web files local folder\n#intended for web app customization\n#no drive letter, start with '/' = absolute path, else relative to start folder\n#e.g. /my-local-path/user-http, user-http", "#jps.user.web.local.root=user-http", "",
+            "#System Web files root folder\n#intended for the system web app\n#no drive letter, start with '/' = absolute path, else relative to jar or to start folder", "jps.web.root=" + WEB_FILE_ROOT, "",
+            "#User Web files local folder\n#intended for web app customization\n#and extensions adding\n#no drive letter, start with '/' = absolute path, else relative to start folder\n#e.g. /my-local-path/user-http, user-http", "#jps.user.web.local.root=user-http", "",
             "#WebApp main Page", "jps.webapp.main.page=/workbench.html", "",
             "#Web content cache mode", "jps.web.cache.load.onstartup=" + FALSE, "",
             "#Web content caching enabled", "jps.web.cache.caching.enabled=" + TRUE, "",
+            "#Shutdown warnings enabled", "jps.shutdown.warnings.enabled=" + TRUE, "",
             "#Extensions root folder name", "jps.extension.root=" + EXTENSION_ROOT, "",
             "#Extensions bin folder name", "jps.extension.bin=" + EXTENSION_BIN, "",
             "#Extensions data folder name", "jps.extension.data=" + EXTENSION_DATA, "",
@@ -139,7 +140,7 @@ public class AppConfig {
     }
 
     public String getWebRoot() {
-        return props.getProperty("jps.web.root", WEB_FILE_ROOT);
+        return props.getProperty("jps.web.root", "");
     }
 
     public String getUserWebLocalRoot() {
@@ -176,6 +177,10 @@ public class AppConfig {
 
     public boolean webCacheCachingEnabled() {
         return Boolean.parseBoolean(props.getProperty("jps.web.cache.caching.enabled", TRUE));
+    }
+
+    public boolean isShutdownWarningsEnabled() {
+        return Boolean.parseBoolean(props.getProperty("jps.shutdown.warnings.enabled", TRUE));
     }
 
     public String getScriptRoot() {
