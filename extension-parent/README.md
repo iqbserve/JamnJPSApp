@@ -86,7 +86,7 @@ The name part (extension-name) of this file will get the unique id name of the e
 ```
 
 
-By default the App will load all extensions defined in the extensions root folder at startup. That is why extensions must im minimum provide a publich constructor. The JPSApp extension api does NOT require a specific lifecycle from extensions. The only entry point is the instantiaton. The def file just provides a singleton=true/false property. 
+By default the App will load all extensions defined in the extensions root folder at startup. That is why extensions must im minimum provide a public constructor. The JPSApp extension api does NOT require a specific lifecycle from extensions. The only entry point is the instantiaton. The def file just provides a singleton=true/false property. 
 
 ## WebApp customization interface
 

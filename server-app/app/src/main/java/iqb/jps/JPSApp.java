@@ -109,6 +109,7 @@ public class JPSApp {
         return new StringBuilder("#")
                 .append(crlf)
                 .append(appName).append(" STARTED - Home [").append(appHome).append("]").append(crlf)
+                .append("\n")
                 .toString();
     }
 

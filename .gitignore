@@ -43,6 +43,7 @@
 !/JamnJPSApp.code-workspace
 !/server-app/app/src/main/resources/app.logging.properties
 !/server-app/app/user-http/**
+!/run.cmd
 
 # virtual machine crash logs # 
 # see http://www.java.com/en/download/help/error_hotspot.xml #
