@@ -177,7 +177,7 @@ public class ApplicationLauncher {
 
         // on windows: directory creation and ACL applying are two steps
         Path tempDir = Files.createTempDirectory(prefix); // sonarqube(java:S5443)
-        //applyOwnerOnlyAcl(tempDir);
+        applyOwnerOnlyAcl(tempDir);
         return tempDir;
     }
 
