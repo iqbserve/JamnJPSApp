@@ -162,6 +162,8 @@ public class ApplicationLauncher {
      * Creates a temporary directory that is only accessible by the current user.
      * On POSIX systems (Linux, macOS), directory permissions are set to {rwx------}.
      * On Windows, an explicit ACL is applied to restrict access to the current user only.
+     * 
+     * The issue is set to "False positive" after applying POSIX and Windows file permissions.
      * </pre>
      */
     private static Path createPrivateTempDirectory(String prefix) throws IOException {
