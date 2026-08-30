@@ -1,0 +1,21 @@
+/* Authored by iqbserve.de */
+
+import { Logger } from 'core/logging.mjs';
+import { LazyFunction } from 'core/tools.mjs';
+
+/**
+ * <pre>
+ * The module is the customizing interface for the workbench web application.
+ * - WbExtensionFeatures : defines and creates new feature objects 
+ * - WbExtensionSidebarItems : defines new sidebar items by adding config data
+ * </pre>
+ */
+
+// provide feature definitions
+export const WbExtensionFeatures = ${featureDefs};
+
+// provide corresponding sidebar item definitions
+// as they are used in the JSON config files
+export const WbExtensionSidebarItems = ${sidebarItemsList};
+
+Logger.info(`Workbench extension features installed`);

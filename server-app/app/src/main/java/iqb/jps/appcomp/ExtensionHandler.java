@@ -35,6 +35,7 @@ import iqb.jps.core.HelperTool;
 import iqb.jps.core.JsonTool;
 import iqb.jps.core.WebServiceRegistry;
 import iqb.jps.extapi.ExtensionInstanceContext;
+import iqb.jps.extapi.ExtensionWebAppConfigurator;
 
 /**
  * <pre>
@@ -61,6 +62,7 @@ public class ExtensionHandler {
     protected final AppConfig config;
 
     protected WebServiceRegistry webServiceRegistry;
+    protected ExtensionWebAppConfigurator webAppConfigurator;
 
     /**
      */
@@ -77,6 +79,12 @@ public class ExtensionHandler {
      */
     public void setWebServiceRegistry(WebServiceRegistry webServiceRegistry) {
         this.webServiceRegistry = webServiceRegistry;
+    }
+
+    /**
+     */
+    public void setWebAppConfigurator(ExtensionWebAppConfigurator webAppConfigurator) {
+        this.webAppConfigurator = webAppConfigurator;
     }
 
     /**
@@ -257,7 +265,7 @@ public class ExtensionHandler {
                 Paths.get(pathBase.toString(), config.getExtensionData()),
                 json,
                 config,
-                encoding);
+                encoding, webAppConfigurator);
     }
 
     /**

@@ -92,21 +92,17 @@ By default the App will load all extensions defined in the extensions root folde
 
 If the extension also provides a WebApp feature one more step is necessary to tell the WebApp about the new feature and to plug it into the WebApp side bar.
 
-This has to be done by using javascript and a local user defined web root folder. To enable this intercepting define the JPSApp property e.g. like
+The current mechanism for that is javascript based and requires javascript and json definitions as web resources.
 
-- jps.user.web.local.root = user-http
+There are two ways to provide this resources:
 
-where "user-http" folder is expected to be in the start/root directory of the JPSApp. Absolut pathes starting with a slash 
+1. by using a local user web root folder and put the necessary resources (/app/wb-extension-features.mjs) there. To enable this intercepting define the JPSApp property e.g. like
 
-- /my-project/my-http-files/my-http
+    - jps.user.web.local.root = user-http - where "user-http" folder is expected to be in the start/root directory of the JPSApp. Absolut pathes must start with a slash e.g. /my-project/my-http-files/my-http
 
-are also supported. From this root on you have to use the pathes that are used in the WebApp to overwrite WebApp files. In the case of the default Worbench WebApp create a file
+2. adding the necessary javascript and json definitions in java to the WebAppConfigurator. This configurator is available for extensions via the ExtensionInstanceContext. However the expected code snippets are for both ways the same. In java they are just reduced to the actual def part.
 
-- /app/wb-extension-features.mjs
-
-which is the the interface to define new WebApp features and their insertion into the sidebar.
-
-Example:
+Example complete wb-extension-features.mjs file in user-http:
 
 ```javascript
 import { Logger } from 'core/logging.mjs';
@@ -137,6 +133,20 @@ export const WbExtensionSidebarItems =  [
 Logger.info(`Workbench extension features installed`);
 
 ```
+
+Example in a java extension:
+
+```java
+ctx.getWebAppConfigurator()
+        .addFeature("toolsDBConnections: new LazyFunction('features/db-connections.mjs', 'getView')")
+        .addConfiguration(
+                "{topic: 'Tools', items: [{ text: 'My DB Connections', feature: 'toolsDBConnections' }]}")
+        //a java extension can also provide a complete JS implementation
+        .addResource("/app/features/db-connections.mjs",
+                 ctx.readResourceFrom(getClass(), "/db-connections.mjs"));
+
+```
+
 
 
 

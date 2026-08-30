@@ -14,7 +14,6 @@ import java.util.Map;
 
 import iqb.jps.core.JsonTool;
 import iqb.jps.extapi.ExtensionInstanceContext;
-import iqb.jps.annotation.WebResource;
 import iqb.jps.annotation.WebService;
 
 /**
@@ -35,12 +34,15 @@ public class DBConnectionExtension {
         this.jsonTool = ctx.getJsonTool();
         this.encoding = ctx.getEncoding();
         this.loadConnections();
+
+        this.createWebAppFeature(ctx);
     }
 
     /********************************************************************************/
-    /* API */
+    /* Web API */
     /********************************************************************************/
     protected static final String apiRoot = "${jps.webservice.url.root}/service/";
+
     /**
      */
     @WebService(path = apiRoot + "get-db-connections")
@@ -82,15 +84,20 @@ public class DBConnectionExtension {
         return response.setStatusOk();
     }
 
-    /**
-     */
-    @WebResource(path = "/app/features/db-connections.mjs")
-    public byte[] getWebComponent() throws IOException {
-       return getClass().getResourceAsStream("/db-connections.mjs").readAllBytes();
-    }
+    /********************************************************************************/
+    /********************************************************************************/
 
-    /********************************************************************************/
-    /********************************************************************************/
+    /**
+     * Add this extension as a feature to the web app
+     */
+    protected void createWebAppFeature(ExtensionInstanceContext ctx) throws IOException {
+        ctx.getWebAppConfigurator()
+                .addFeature("toolsDBConnections: new LazyFunction('features/db-connections.mjs', 'getView')")
+                .addConfiguration(
+                        "{topic: 'Tools', items: [{ text: 'My DB Connections', feature: 'toolsDBConnections' }]}")
+                .addResource("/app/features/db-connections.mjs",
+                        ctx.readResourceFrom(getClass(), "/db-connections.mjs"));
+    }
 
     /**
      */

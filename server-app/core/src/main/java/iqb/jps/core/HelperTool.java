@@ -2,6 +2,7 @@
 package iqb.jps.core;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
@@ -263,4 +264,25 @@ public class HelperTool {
             target.setProperty(key, source.getProperty(key));
         }
     }
+
+    /**
+     * Reads the content of a string resource from the specified class and resource
+     * path.
+     */
+    public String readStringResourceFrom(Class<?> clazz, String resourcePath) throws IOException {
+        return new String(this.readResourceFrom(clazz, resourcePath), StandardEncoding);
+    }
+
+    /**
+     * Reads the content of a resource from the specified class and resource path.
+     */
+    public byte[] readResourceFrom(Class<?> clazz, String resourcePath) throws IOException {
+        try (InputStream is = clazz.getResourceAsStream(resourcePath)) {
+            if (is == null) {
+                throw new IllegalArgumentException("Resource not found: " + resourcePath);
+            }
+            return is.readAllBytes();
+        }
+    }
+
 }

@@ -1,11 +1,13 @@
 /* Authored by iqbserve.de */
 package iqb.jps.extapi;
 
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.function.Consumer;
 
 import iqb.jps.core.AppConfig;
+import iqb.jps.core.HelperTool;
 import iqb.jps.core.JsonTool;
 
 /**
@@ -13,10 +15,13 @@ import iqb.jps.core.JsonTool;
  * Contains common resources and configuration needed by the extension.
  */
 public class ExtensionInstanceContext {
+    private static final HelperTool Tool = HelperTool.getInstance();
+    
     private final Consumer<String> outputConsumer;
     private final Path dataPath;
     private final JsonTool jsonTool;
     private final AppConfig appConfig;
+    private final ExtensionWebAppConfigurator webAppConfigurator;
     private final Charset encoding;
 
     public ExtensionInstanceContext(
@@ -24,12 +29,14 @@ public class ExtensionInstanceContext {
             Path dataPath,
             JsonTool jsonTool,
             AppConfig appConfig,
-            Charset encoding) {
+            Charset encoding,
+            ExtensionWebAppConfigurator webAppConfigurator) {
         this.outputConsumer = outputConsumer;
         this.dataPath = dataPath;
         this.jsonTool = jsonTool;
         this.appConfig = appConfig;
         this.encoding = encoding;
+        this.webAppConfigurator = webAppConfigurator;
     }
 
     public JsonTool getJsonTool() {
@@ -50,5 +57,13 @@ public class ExtensionInstanceContext {
 
     public Consumer<String> getOutputConsumer() {
         return outputConsumer;
+    }
+
+    public ExtensionWebAppConfigurator getWebAppConfigurator() {
+        return webAppConfigurator;
+    }
+
+    public byte[] readResourceFrom(Class<?> clazz, String resourcePath) throws IOException {
+        return Tool.readResourceFrom(clazz, resourcePath);
     }
 }

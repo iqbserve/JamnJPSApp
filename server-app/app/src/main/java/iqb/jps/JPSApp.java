@@ -23,6 +23,7 @@ import iqb.jps.appcomp.ExtensionHandler;
 import iqb.jps.appcomp.JavaScriptAppAdapter;
 import iqb.jps.appcomp.JavaScriptProvider;
 import iqb.jps.appcomp.OperatingSystemInterface;
+import iqb.jps.appcomp.WebAppConfigurator;
 import iqb.jps.boot.ApplicationLauncher;
 import iqb.jps.core.AppConfig;
 import iqb.jps.core.HelperTool;
@@ -320,10 +321,21 @@ public class JPSApp {
      */
     private void initAppServicesAndObjects() throws WebServiceDefinitionException, IOException {
 
-        // connect the extension handler to web service provider
-        // and load all available extensions
-        extensionHandler.setWebServiceRegistry(this.webServiceProvider);
+        // create a web app configurator
+        // to enable extensions to define themselfs as web app features
+        WebAppConfigurator webAppConfigurator = new WebAppConfigurator(webContentProvider)
+                .setInterfaceResource("/app/", "wb-extension-features.mjs");
+
+        // connect the extension handler to the web service provider
+        // and supply the WebApp configurator
+        extensionHandler.setWebServiceRegistry(webServiceProvider);
+        extensionHandler.setWebAppConfigurator(webAppConfigurator);
+
         extensionHandler.loadAllExtensions();
+        
+        // after all extensions are loaded,
+        // build the web app configuration and register the resources
+        webAppConfigurator.build();
 
         // add task processors to the web socket system
         // these processors will handle the incoming web socket messages
