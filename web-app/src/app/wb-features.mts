@@ -17,7 +17,7 @@ import { SBarItemDef, WbAppConfig } from 'config/wbapp-config.mjs';
  */
 
 // feature registry object
-const extensionFeatures: Record<string, DynamicFunction> = {};
+const applicationFeatures: Record<string, DynamicFunction> = {};
 
 // extension sidebar item definitions
 // to add extensions to the sidebar
@@ -40,10 +40,10 @@ export function initExtensionFeatures(config: WbAppConfig, cb: () => void) {
  * Feature registration/definition function
  */
 export function addFeature(name: string, feature: DynamicFunction, sideBarItemDef?: ExtensionSBarItemDef) {
-    if (extensionFeatures[name]) {
+    if (applicationFeatures[name]) {
         throw new Error(`Feature [${name}] already exists`);
     } else {
-        extensionFeatures[name] = feature;
+        applicationFeatures[name] = feature;
     }
     if (sideBarItemDef) {
         sideBarItemDef.feature = name;
@@ -55,8 +55,8 @@ export function addFeature(name: string, feature: DynamicFunction, sideBarItemDe
  * Features are invoked/called by using the callFeature() function
  */
 export function callFeature(name: string, viewManager: WorkbenchViewManager) {
-    if (extensionFeatures[name]) {
-        const feature = extensionFeatures[name];
+    if (applicationFeatures[name]) {
+        const feature = applicationFeatures[name];
         feature.invoke((retObj: WorkView | (() => void) | null) => {
             if (retObj instanceof WorkView) {
                 viewManager.openView(retObj);
