@@ -1,9 +1,0 @@
-{
-    "binPath": "./bin/jpssample-jsplayground-0.0.1-SNAPSHOT.jar",
-    "className": "iqb.jps.sample.JSPlaygroundExtension",
-    "devPath": "",
-    "libs": [],
-    "runMethod": "",
-    "scope": "app",
-    "singleton": true
-}

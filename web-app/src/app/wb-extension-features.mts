@@ -1,18 +1,14 @@
 /* Authored by iqbserve.de */
-
-/* needed Types */
-import type { DynamicFunction, ExtensionSidebarItem } from 'types/commons';
+import { Logger } from 'core/logging.mjs';
+import { moveArrayElement } from 'core/tools.mjs';
+import { LazyFunction } from 'core/tools.mjs';
+import { addFeature } from 'app/wb-features.mjs';
+import { CommandDef } from 'core/data-classes.mjs';
 
 /**
  * <pre>
- * The module is the customizing interface for the workbench web application.
- * - WbExtensionFeatures : defines and creates new feature objects 
- * - WbExtensionSidebarItems : defines new sidebar items by adding config data
+ **** This PLACEHOLDER module is the customizing interface for the web application.
+ **** Do NOT edit - file is only a placeholder/template     
+ **** Do NOT use or include this module anywhere
  * </pre>
  */
-
-export const WbExtensionFeatures: Record<string, DynamicFunction> = {}
-
-export const WbExtensionSidebarItems: ExtensionSidebarItem[] = [];
-
-    

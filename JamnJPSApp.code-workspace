@@ -54,6 +54,7 @@
 				"alias": "Clean-install",
 				"command": "clean install"
 			}
-		]
+		],
+		"js/ts.validate.enabled": true
 	}
 }

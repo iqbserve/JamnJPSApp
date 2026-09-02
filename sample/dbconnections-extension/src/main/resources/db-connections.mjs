@@ -144,7 +144,7 @@ class DbConnectionsView extends WorkView {
 					<i class="${Icons.infoc('class')}" style="font-size: 22px; color: var(--info-light-green);"></i>
     				<h3 style="margin-left: 20px; font-weight: normal; user-select: none;">DB Connections View</h3>
 				</span>
-				<p>My extension sample view to create and edit database connection information.</p>
+				<p>Extension sample view to create and edit database connection information.</p>
 				<p>Connections can be created and edited under a unique name.<br>After typing or selecting an existing name,<br>the connection data is loaded and displayed.</p>
 				<ul>
 					${makeLI(Icons.eraser("class"), 'clears the current selection and data')}

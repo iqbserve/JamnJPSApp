@@ -77,6 +77,22 @@ public class WebAppConfigService {
             content = new String(bytes, encoding);
             configData = (Map<Object, Object>) json.toObject(content, Object.class);
             enrichAppConfigWith("systemInfo", config.getBuildProperties(), configData);
+
+            String[][] keys = new String[][]{
+                {"jps.extension.feature.interface.template", "extensionFeaturesModule"}
+            };
+
+            Properties props = new Properties();
+            for (String[] keyPair : keys) {
+                String propKey = keyPair[0];
+                String configKey = keyPair[1];
+                if (config.getProperties().containsKey(propKey)) {
+                    props.put(configKey, config.getProperties().get(propKey));
+                }
+            }
+            
+            enrichAppConfigWith("properties", props, configData);
+            
             content = json.toPrettyString(configData);
             LOG.info("Web app configuration read from [{}]:", requestPath);
         }

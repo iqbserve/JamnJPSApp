@@ -1,10 +1,5 @@
 {
-  "binPath" : "./bin/jpssample-command-0.0.1-SNAPSHOT.jar",
-  "className" : "iqb.jps.sample.SampleCommand",
-  "config" : { },
-  "devPath" : "",
-  "libs" : [ ],
-  "runMethod" : "execute",
-  "scope" : "",
-  "singleton" : false
+    "binPath": "./bin/jpssample-command-0.0.1-SNAPSHOT.jar",
+    "className": "iqb.jps.sample.SampleCommand",
+    "runMethod": "execute"
 }

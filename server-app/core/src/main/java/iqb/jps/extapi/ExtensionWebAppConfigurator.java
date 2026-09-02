@@ -9,10 +9,6 @@ public interface ExtensionWebAppConfigurator {
 
     /**
      */
-    public ExtensionWebAppConfigurator addConfiguration(String configJsonCode);
-
-    /**
-     */
     public ExtensionWebAppConfigurator addResource(String resourcePath, byte[] resourceContent);
 
     /**

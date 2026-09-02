@@ -53,8 +53,10 @@ public class ExtensionHandler {
     protected static final Logger LOG = LoggerFactory.getLogger(ExtensionHandler.class);
     protected static final HelperTool Tool = HelperTool.getInstance();
     protected static String DEFFILE_SUFFIX = ".json";
+    protected static String FEATURE_DEFFILE_SUFFIX = ".feature.js";
 
     protected final Path pathBase;
+    protected final Path featurePathBase;
     protected final Charset encoding;
     protected final ConcurrentHashMap<String, ExtensionCartridge> extensions;
     protected final JPSApp jpsApp;
@@ -68,6 +70,7 @@ public class ExtensionHandler {
      */
     public ExtensionHandler(Path extensionRoot, JPSApp jpsApp) {
         this.pathBase = extensionRoot;
+        this.featurePathBase = extensionRoot.resolve(jpsApp.getAppConfig().getExtensionFeatures());
         this.extensions = new ConcurrentHashMap<>();
         this.jpsApp = jpsApp;
         this.encoding = jpsApp.getStandardEncoding();
@@ -112,6 +115,7 @@ public class ExtensionHandler {
                             if (extensionDef.getName() == null || extensionDef.getName().trim().isEmpty()) {
                                 extensionDef.setName(path.getFileName().toString().replace(DEFFILE_SUFFIX, ""));
                             }
+                            readFeatureDefinition(extensionDef.getName(), extensionDef);
                             registerExtension(extensionDef);
                             names.add(extensionDef.getName());
                         } catch (IOException e) {
@@ -178,30 +182,35 @@ public class ExtensionHandler {
         List<String> errors = new ArrayList<>();
 
         try {
-            file = resolvePath(def.hasDevPath() ? def.getDevPath() : def.getBinPath(), def);
-            if (def.hasDevPath()) {
-                String path = file.toString();
-                LOG.info("HINT use extension development path for: [{}] devPath=[{}]", def, path);
-            }
-            Tool.createFileURL(file, urls, def, errors);
-
-            for (String lib : def.getLibs()) {
-                file = resolvePath(lib, def);
-                Tool.createFileURL(file, urls, def, errors);
-            }
-
-            if (!errors.isEmpty()) {
-                throw new UncheckedExtensionException(
-                        String.format("Extension binary init failed: %s", errors));
+            if (def.featureOnly) {
+                cart.initFeatureDefinition();
             } else {
-                ClassLoader rootLoader = def.hasAppScope() ? Thread.currentThread().getContextClassLoader()
-                        : ClassLoader.getPlatformClassLoader();
-                cart.loader = new URLClassLoader(urls.toArray(new URL[urls.size()]), rootLoader);
+                file = resolvePath(def.hasDevPath() ? def.getDevPath() : def.getBinPath(), def);
+                if (def.hasDevPath()) {
+                    String path = file.toString();
+                    LOG.info("HINT use extension development path for: [{}] devPath=[{}]", def, path);
+                }
+                Tool.createFileURL(file, urls, def, errors);
 
-                cart.clazz = cart.loader.loadClass(def.getClassName());
-                cart.initConstructor();
-                cart.initRunMethod();
-                cart.initHttpEndpoints();
+                for (String lib : def.getLibs()) {
+                    file = resolvePath(lib, def);
+                    Tool.createFileURL(file, urls, def, errors);
+                }
+
+                if (!errors.isEmpty()) {
+                    throw new UncheckedExtensionException(
+                            String.format("Extension binary init failed: %s", errors));
+                } else {
+                    ClassLoader rootLoader = def.hasAppScope() ? Thread.currentThread().getContextClassLoader()
+                            : ClassLoader.getPlatformClassLoader();
+                    cart.loader = new URLClassLoader(urls.toArray(new URL[urls.size()]), rootLoader);
+
+                    cart.clazz = cart.loader.loadClass(def.getClassName());
+                    cart.initConstructor();
+                    cart.initRunMethod();
+                    cart.initHttpEndpoints();
+                    cart.initFeatureDefinition();
+                }
             }
             LOG.info("Extension installed: {} : {}", cart.name, cart.def);
         } catch (UncheckedExtensionException e) {
@@ -213,6 +222,22 @@ public class ExtensionHandler {
                     String.format("Extension basic initialization failed for [%s] - %s", cart.def,
                             Tool.getStackTraceFrom(e)),
                     e);
+        }
+    }
+
+    /**
+     */
+    protected void readFeatureDefinition(String name, ExtensionDef def) throws IOException {
+
+        Path file = Paths.get(featurePathBase.toString(), name + FEATURE_DEFFILE_SUFFIX);
+        if (Files.exists(file)) {
+            def.featureDef = new String(Files.readAllBytes(file), encoding).trim();
+        }
+        if (!def.featureModuleFileName.isEmpty()) {
+            file = Paths.get(featurePathBase.toString(), def.featureModuleFileName);
+            if (Files.exists(file) && Files.isRegularFile(file)) {
+                def.featureModule = Files.readAllBytes(file);
+            }
         }
     }
 
@@ -236,6 +261,9 @@ public class ExtensionHandler {
             } else {
                 throw new UncheckedExtensionException(
                         String.format("NO extension definition-file found [%s]", defFile.getFileName()));
+            }
+            if (def != null) {
+                readFeatureDefinition(name, def);
             }
         } catch (IOException e) {
             throw new UncheckedExtensionException(
@@ -378,6 +406,19 @@ public class ExtensionHandler {
 
         /**
          */
+        protected void initFeatureDefinition() {
+            if (webAppConfigurator != null) {
+                if (def.featureDef != null) {
+                    webAppConfigurator.addFeature(def.featureDef);
+                }
+                if (def.featureModule != null && !def.featurePath.isEmpty()) {
+                    webAppConfigurator.addResource(def.featurePath, def.featureModule);
+                }
+            }
+        }
+
+        /**
+         */
         protected Object newInstance(Optional<ExtensionCallContext> callCtx)
                 throws InstantiationException, IllegalAccessException, IllegalArgumentException,
                 InvocationTargetException {
@@ -434,8 +475,18 @@ public class ExtensionHandler {
         protected String runMethod = "";
         protected String scope = "";
         protected boolean singleton = false;
-
         protected Map<String, String> config = new HashMap<>();
+
+        // Feature related fields
+        protected boolean featureOnly = false;
+        protected String featureModuleFileName = "";
+        protected String featurePath = "";
+
+        // Internal fields for feature handling
+        @JsonIgnore
+        protected String featureDef = null;
+        @JsonIgnore
+        protected byte[] featureModule = null;
 
         public String getName() {
             return name;

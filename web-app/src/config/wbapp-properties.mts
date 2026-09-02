@@ -17,6 +17,7 @@ class Properties {
         webSocketUrlRoot: "/wsoapi",
         webBackendServerUrl: "",
         webAuthenticationEnabled: false,
+        extensionFeaturesModule: "wb-extension-features.mjs",
 
         systemInfo: {},
         vcUrls: {
@@ -40,7 +41,7 @@ class Properties {
         }
     };
 
-    get(key: string, defaultVal = null) {
+    get(key: string, defaultVal: any = null) {
         const value = this.#entries[key];
         if (value === true || value === false) { return value; }
         return this.#entries[key] || defaultVal;
@@ -69,6 +70,10 @@ class Properties {
     }
     webBackendServerUrl(defaultVal = null) {
         return this.get("webBackendServerUrl", defaultVal);
+    }
+
+    extensionFeaturesModule() {
+        return this.get("extensionFeaturesModule", "/app/wb-extension-features.mjs");
     }
 
     isWebAuthenticationEnabled() {

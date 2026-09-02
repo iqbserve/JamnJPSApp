@@ -32,18 +32,6 @@
 			"text": "Server Commands",
 			"icon": "command",
 			"items": [
-				{
-					"text": "Sample: shell script",
-					"feature": "cmdSampleShellCall"
-				},
-				{
-					"text": "Sample: java extension",
-					"feature": "cmdSampleExtension"
-				},
-				{
-					"text": "Sample: build script",
-					"feature": "cmdSampleBuildProject"
-				}
 			]
 		}
 	],

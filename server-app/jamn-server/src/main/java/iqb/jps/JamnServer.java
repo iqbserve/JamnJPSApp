@@ -215,14 +215,11 @@ public class JamnServer {
     public synchronized void start() {
         try {
             startListening();
-            String crlf = "\n # ";
-            LOG.atInfo().log(new StringBuilder("#")
-                    .append(crlf)
-                    .append("JamnServer STARTED:").append(crlf)
-                    .append(" ").append(serverURI.toString()).append(" - ").append(serverSocket.toString())
-                    .append(crlf)
+            LOG.atInfo().log(new StringBuilder()
+                    .append("JamnServer started: ")
+                    .append(serverURI.toString()).append(" - ").append(serverSocket.toString())
                     .append(config.isHttpAllowAllCORSEnabled()
-                            ? crlf + "IMPORTANT - Global ALLOW ALL CORS is enabled!" + crlf
+                            ? "\n" + "IMPORTANT - Global ALLOW ALL CORS is enabled!"
                             : "")
                     .toString());
         } catch (Exception e) {
@@ -320,8 +317,9 @@ public class JamnServer {
 
                     final Socket clientSocket = activeSocket.accept();
 
-                    // blocks the accept loop while at the connection limit - applies natural backpressure
-                    try { //NOSONAR
+                    // blocks the accept loop while at the connection limit - applies natural
+                    // backpressure
+                    try { // NOSONAR
                         connectionLimiter.acquire();
                     } catch (InterruptedException _) {
                         Thread.currentThread().interrupt();
@@ -507,7 +505,7 @@ public class JamnServer {
          * </pre>
          */
         @Override
-        public void handleRequest(Socket socket, Map<String, String> comData) throws IOException { //NOSONAR
+        public void handleRequest(Socket socket, Map<String, String> comData) throws IOException { // NOSONAR
 
             String socketIDText = String.format("ClientSocket [%s]", socket.hashCode());
             comData.put(SOCKET_IDTEXT, socketIDText);
@@ -696,7 +694,8 @@ public class JamnServer {
                         headerEndFlag--;
                     }
                 }
-                // relies solely on the blocking read above (and the socket timeout) - available() is unreliable for end-of-header detection
+                // relies solely on the blocking read above (and the socket timeout) -
+                // available() is unreliable for end-of-header detection
             } while (headerEndFlag < 2);
 
             bytes = byteBuffer.toByteArray();
@@ -725,7 +724,8 @@ public class JamnServer {
                         Status.SC_413_PAYLOAD_TOO_LARGE);
             }
 
-            // bulk read into a correctly sized buffer - avoids per-byte synchronized calls and over-reading into the next keep-alive request
+            // bulk read into a correctly sized buffer - avoids per-byte synchronized calls
+            // and over-reading into the next keep-alive request
             byte[] body = new byte[contentLength];
             int actual = 0;
             int readLen;

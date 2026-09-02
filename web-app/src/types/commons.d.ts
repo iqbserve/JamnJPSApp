@@ -68,8 +68,9 @@ export type DialogMessage = {
 /**
  * Sidebar item definition for extensions.
  */
-export type ExtensionSidebarItem = {
+export type ExtensionSBarItemDef = {
     topic: string;
     icon?: string;
-    items: { text: string, feature: string }[];
+    item: string;
+    feature?: string;
 };

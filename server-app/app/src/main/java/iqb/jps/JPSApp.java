@@ -35,6 +35,7 @@ import iqb.jps.srvcomp.WebContentProvider.WebFile;
 import iqb.jps.srvcomp.WebServiceProvider;
 import iqb.jps.srvcomp.WebServiceProvider.WebServiceDefinitionException;
 import iqb.jps.srvcomp.WebSocketProvider;
+import iqb.jps.webapi.JSPlaygroundService;
 import iqb.jps.webapi.WebAppConfigService;
 import iqb.jps.wsoapi.RunExtensionTaskProcessor;
 import iqb.jps.wsoapi.RunJavaScriptTaskProcessor;
@@ -106,11 +107,13 @@ public class JPSApp {
     /**
      */
     private String getStartInfo() {
-        String crlf = "\n # ";
-        return new StringBuilder("#")
+        String crlf = "\n";
+        return new StringBuilder(getASCIILogo())
+                .append(" JPSApp startet :-)").append(crlf)
+//                .append("JPSApp STARTED").append(crlf)
+                .append("  Home: [").append(appHome).append("]").append(crlf)
+                .append("  Server running at: ").append(server.getURI()).append(crlf)
                 .append(crlf)
-                .append(appName).append(" STARTED - Home [").append(appHome).append("]").append(crlf)
-                .append("\n")
                 .toString();
     }
 
@@ -300,6 +303,7 @@ public class JPSApp {
             Path rootPath = Tool.ensureSubDir(appConfig.getExtensionRoot(), appHome);
             Tool.ensureSubDir(appConfig.getExtensionBin(), rootPath);
             Tool.ensureSubDir(appConfig.getExtensionData(), rootPath);
+            Tool.ensureSubDir(appConfig.getExtensionFeatures(), rootPath);
             Tool.ensureSubDir(appConfig.getWorkspaceRoot(), appHome);
 
             Path filePath = Paths.get(rootPath.toString(),
@@ -323,8 +327,9 @@ public class JPSApp {
 
         // create a web app configurator
         // to enable extensions to define themselfs as web app features
-        WebAppConfigurator webAppConfigurator = new WebAppConfigurator(webContentProvider)
-                .setInterfaceResource("/app/", "wb-extension-features.mjs");
+        WebAppConfigurator webAppConfigurator = new WebAppConfigurator(webContentProvider, appConfig)
+                .setInterfaceResource("/app/", appConfig.getExtensionFeatureInterfaceTemplate(),
+                        extensionHandler.getRootPath());
 
         // connect the extension handler to the web service provider
         // and supply the WebApp configurator
@@ -332,7 +337,7 @@ public class JPSApp {
         extensionHandler.setWebAppConfigurator(webAppConfigurator);
 
         extensionHandler.loadAllExtensions();
-        
+
         // after all extensions are loaded,
         // build the web app configuration and register the resources
         webAppConfigurator.build();
@@ -345,6 +350,7 @@ public class JPSApp {
 
         // register app web services
         webServiceProvider.registerServices(() -> WebAppConfigService.getInstance(this));
+        webServiceProvider.registerServices(JSPlaygroundService::getInstance);
 
         LOG.info("App Services and objects installed");
     }
@@ -407,5 +413,18 @@ public class JPSApp {
      */
     public ExtensionHandler getExtensionHandler() {
         return extensionHandler;
+    }
+
+    /**
+     * Get the ASCII art logo of the application.
+     */
+    public String getASCIILogo() {
+        return String.join("\n"
+,"    _                       "
+,"    | | __ _ _ __ ___  _ __  "
+," _  | |/ _` | '_ ` _ \\| '_ \\ "
+,"| |_| | (_| | | | | | | | | |"
+," \\___/ \\__,_|_| |_| |_|_| |_|"
+);
     }
 }

@@ -31,7 +31,6 @@
 	<modules>
 		<module>command-extension</module>
 		<module>dbconnections-extension</module>
-		<module>jsplayground-extension</module>
 	</modules>
 
 </project>

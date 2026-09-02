@@ -90,61 +90,46 @@ By default the App will load all extensions defined in the extensions root folde
 
 ## WebApp customization interface
 
-If the extension also provides a WebApp feature one more step is necessary to tell the WebApp about the new feature and to plug it into the WebApp side bar.
+If the extension also is or provides a WebApp feature it has to get pluged into the WebApp.
 
-The current mechanism for that is javascript based and requires javascript and json definitions as web resources.
+The current mechanism for that is javascript based and requires javascript and json definitions as web resources. The basic entrypoint for this is the wb-extension-features.mjs file in the extensions root folder (NOT in the web-app project itself). The file is plugged into to the Web App and adds or configures objects and configurations.
 
-There are two ways to provide this resources:
-
-1. by using a local user web root folder and put the necessary resources (/app/wb-extension-features.mjs) there. To enable this intercepting define the JPSApp property e.g. like
-
-    - jps.user.web.local.root = user-http - where "user-http" folder is expected to be in the start/root directory of the JPSApp. Absolut pathes must start with a slash e.g. /my-project/my-http-files/my-http
-
-2. adding the necessary javascript and json definitions in java to the WebAppConfigurator. This configurator is available for extensions via the ExtensionInstanceContext. However the expected code snippets are for both ways the same. In java they are just reduced to the actual def part.
-
-Example complete wb-extension-features.mjs file in user-http:
+There are different ways to define and add such js code - but in the end they are all written to the wb-extension-features.mjs file. The file has a public area where code can be directly placed - and a placeholder which is the anchor for added and generated code. Normally, it is not necessary to edit this file — all necessary definitions can be created directly within or alongside the respective extensions and will then automatically end up in this file at runtime.
 
 ```javascript
 import { Logger } from 'core/logging.mjs';
 import { LazyFunction } from 'core/tools.mjs';
+import { addFeature } from 'app/wb-features.mjs';
+import { CommandDef } from 'core/data-classes.mjs';
 
 /**
  * <pre>
- * The module is the customizing interface for the workbench web application.
- * - WbExtensionFeatures : defines and creates new feature objects 
- * - WbExtensionSidebarItems : defines new sidebar items by adding config data
+ * Extensions WebApp customization interface file.
+ * Place customization efforts in doCustomization() function.
  * </pre>
  */
+export function doCustomization(config) {
+}
 
-// provide feature definitions
-export const WbExtensionFeatures = {
-    // create real web app objects
-    toolsDBConnections: new LazyFunction('features/db-connections.mjs', "getView")
-};
+// -----------------------------------------------------------------
+// Feature definitions placeholder 
+// DO NOT change, edit, format or remove this custom placeholder
+${ featureDefs }
 
-// provide corresponding sidebar item definitions
-// as they are used in the JSON config files
-export const WbExtensionSidebarItems =  [
-    {topic: "Tools", items: [
-        { text: "My DB Connections Feature", feature: "toolsDBConnections" }
-    ]}
-];
-
-Logger.info(`Workbench extension features installed`);
-
+Logger.info("Web App extension features installed");
 ```
 
-Example in a java extension:
+For example: if a feature definition for an extension is needed - the js code can be placed into a file under extensions/features named like the extension definition file itself with ".feature.js" as suffix instead of ".json".
 
-```java
-ctx.getWebAppConfigurator()
-        .addFeature("toolsDBConnections: new LazyFunction('features/db-connections.mjs', 'getView')")
-        .addConfiguration(
-                "{topic: 'Tools', items: [{ text: 'My DB Connections', feature: 'toolsDBConnections' }]}")
-        //a java extension can also provide a complete JS implementation
-        .addResource("/app/features/db-connections.mjs",
-                 ctx.readResourceFrom(getClass(), "/db-connections.mjs"));
-
+```javascript
+// file content with addFeater snippet
+addFeature("cmdSampleExtension", new LazyFunction("features/command.mjs", "getView",
+    [
+        "cmdSampleExtensionView",
+        new CommandDef("Sample: [ java extension command ]", "runext", "sample-command")
+            .setOption("args", true)
+    ]
+), { topic: 'Server Commands', item: 'Sample: Java command' });
 ```
 
 

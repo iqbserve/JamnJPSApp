@@ -1,29 +1,30 @@
 /* Authored by iqbserve.de */
-package iqb.jps.sample;
+package iqb.jps.webapi;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import iqb.jps.annotation.WebService;
-import iqb.jps.extapi.ExtensionInstanceContext;
 
 /**
  */
-public class JSPlaygroundExtension {
-    protected static final String StatusOk = "ok";
-    protected static final String StatusError = "error";
+public class JSPlaygroundService {
+    private static final String StatusOk = "ok";
+    private static final String StatusError = "error";
 
-    protected ExtensionInstanceContext ctx;
-    protected Map<String, PlaygroundRequest> contentBuffer = new HashMap<>();
+    private Map<String, PlaygroundRequest> contentBuffer = new HashMap<>();
 
-    public JSPlaygroundExtension(ExtensionInstanceContext ctx) {
-        this.ctx = ctx;
+    private static final JSPlaygroundService instance = new JSPlaygroundService();
+    public static JSPlaygroundService getInstance() {
+        return instance;
+    }
+    private JSPlaygroundService() {
     }
 
     /********************************************************************************/
     /* API */
     /********************************************************************************/
-    protected static final String apiRoot = "${jps.webservice.url.root}/service/";
+    private static final String apiRoot = "${jps.webservice.url.root}/service/";
 
     /**
      */

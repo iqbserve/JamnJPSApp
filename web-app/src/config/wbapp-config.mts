@@ -3,7 +3,8 @@
 import type { JSObject, PropertiesObject } from "types/commons";
 
 /* Types */
-export type SBarTopicDef = { text: string, icon: string, items: { text: string, feature: string }[] };
+export type SBarItemDef = { text: string, feature: string };
+export type SBarTopicDef = { text: string, icon: string, items: SBarItemDef[] };
 type workpanelItem = { text: string, icon: string, feature: string };
 
 /**

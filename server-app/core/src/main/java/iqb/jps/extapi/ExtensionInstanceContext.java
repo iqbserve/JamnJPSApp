@@ -63,6 +63,10 @@ public class ExtensionInstanceContext {
         return webAppConfigurator;
     }
 
+    public String readStringFrom(Class<?> clazz, String resourcePath) throws IOException {
+        return Tool.readStringResourceFrom(clazz, resourcePath);
+    }
+
     public byte[] readResourceFrom(Class<?> clazz, String resourcePath) throws IOException {
         return Tool.readResourceFrom(clazz, resourcePath);
     }

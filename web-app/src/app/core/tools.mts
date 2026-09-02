@@ -165,6 +165,22 @@ export function mergeArrayInto<T>(target: T[], source: T[], allowDuplicates = fa
 }
 
 /**
+ * Moves an element within an array from one index to another.
+ */
+export function moveArrayElement<T>(fromIndex: number | object, toIndex: number, array: T[]): T[] {
+	if (typeof fromIndex !== "number") {
+		fromIndex = array.indexOf(fromIndex as T);
+	}
+	toIndex = toIndex >= array.length ? array.length - 1 : toIndex;
+	if (fromIndex < 0 || fromIndex >= array.length || toIndex < 0) {
+		return array;
+	}
+	const element = array.splice(fromIndex, 1)[0];
+	array.splice(toIndex, 0, element);
+	return array;
+}
+
+/**
  */
 export const fileUtil = {
 

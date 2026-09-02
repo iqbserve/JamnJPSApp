@@ -49,6 +49,7 @@ public class AppConfig {
     private static final String DATA_ROOT = "data";
     private static final String EXTENSION_ROOT = "extensions";
     private static final String EXTENSION_BIN = "bin";
+    private static final String EXTENSION_FEATURES = "features";
     private static final String EXTENSION_DATA = "data";
     private static final String WORKSPACE_ROOT = "workspace";
 
@@ -82,6 +83,8 @@ public class AppConfig {
             "#Extensions root folder name", "jps.extension.root=" + EXTENSION_ROOT, "",
             "#Extensions bin folder name", "jps.extension.bin=" + EXTENSION_BIN, "",
             "#Extensions data folder name", "jps.extension.data=" + EXTENSION_DATA, "",
+            "#Extensions features folder name", "jps.extension.features=" + EXTENSION_FEATURES, "",
+            "#Extensions WebApp interface template file", "jps.extension.feature.interface.template=wb-extension-features.mjs", "",
             "#Command task worker", "jps.command.task.worker=10", "",
             "#Workspace root folder", "jps.workspace.root=" + WORKSPACE_ROOT, "",
             "#Data root folder", "jps.data.root=" + DATA_ROOT, "",
@@ -163,6 +166,14 @@ public class AppConfig {
         return props.getProperty("jps.extension.data", EXTENSION_DATA);
     }
 
+    public String getExtensionFeatures() {
+        return props.getProperty("jps.extension.features", EXTENSION_FEATURES);
+    }
+
+    public String getExtensionFeatureInterfaceTemplate() {
+        return props.getProperty("jps.extension.feature.interface.template", "wb-extension-features.mjs");
+    }
+    
     public String getWorkspaceRoot() {
         return props.getProperty("jps.workspace.root", WORKSPACE_ROOT);
     }

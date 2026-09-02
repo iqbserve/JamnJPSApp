@@ -1,7 +1,7 @@
 /* Authored by iqbserve.de */
 
 import { Logger } from 'core/logging.mjs';
-import { checkUrlAvailable, BackendServerUrl, setDisplay, setVisibility, decodeRequestParameter } from 'core/tools.mjs';
+import { LazyFunction, checkUrlAvailable, BackendServerUrl, setDisplay, setVisibility, decodeRequestParameter } from 'core/tools.mjs';
 import { SplitBarHandler } from 'core/view-classes.mjs';
 import { UIBuilder, DefaultCompProps, onClicked } from 'core/uibuilder.mjs';
 import { WorkbenchViewManager } from 'core/view-manager.mjs';
@@ -10,18 +10,17 @@ import { WsoCommonMessage } from 'app/core/data-classes.mjs';
 import { NotificationHandler, Notification, type NotificationListener } from 'core/notification.mjs';
 import { WbProperties } from 'config/wbapp-properties.mjs';
 import { WbAppConfig } from 'config/wbapp-config.mjs';
-import { callFeature } from 'app/wb-features.mjs';
-import { WbExtensionSidebarItems } from 'app/wb-extension-features.mjs';
-
 import * as Webapi from 'app/core/webapi.mjs';
 import * as Icons from 'core/icons.mjs';
 import { registerUIWebComponents, WbTitlebar, WbStatusline, WbSidebar } from 'app/core/uicomponents.mjs';
+import { addFeature, callFeature, initExtensionFeatures } from 'app/wb-features.mjs';
 
 /* Types */
 import type { JSObject, JSClass, PropertiesObject, ESModule, UserProfile, DialogMessage } from 'types/commons';
 import type { KeycloakIFace } from 'types/keycloak-provider';
 
 registerUIWebComponents();
+
 
 /**
  * The workbench module implements the entry point of the SPA Application.
@@ -125,23 +124,37 @@ function startApp() {
 	initAuthentication((authenticated) => {
 		Webapi.doGET<string>(`${Webapi.service_get_wbappconfiguration}?name=${configName}`).then((config) => {
 			applyConfig(config, authenticated);
+			initApplicationFeatures();
+			initExtensionFeatures(appConfig, () => {
 
-			viewManager = new WorkbenchViewManager(document.getElementById("app-workarea"));
+				viewManager = new WorkbenchViewManager(document.getElementById("app-workarea"));
 
-			initWebSocket();
-			createUI();
+				initWebSocket();
+				createUI();
 
-			authProvider.notify();
+				authProvider.notify();
 
-			setVisibility(rootElement, true);
-			sidebar.getItem(WbProperties.autoStartFeature())?.click();
+				setVisibility(rootElement, true);
+				sidebar.getItem(WbProperties.autoStartFeature())?.click();
 
-			document.documentElement.style.cursor = "default";
+				document.documentElement.style.cursor = "default";
 
-			WbStartUtility?.close();
-			Logger.info(`Workbench App started [${configName}]`);
+				WbStartUtility?.close();
+				Logger.info(`Workbench App started [${configName}]`);
+			});
 		})
 	});
+}
+
+/**
+ * Create and register the native provided application features.
+ */
+function initApplicationFeatures() {
+	addFeature("systemLogin", new LazyFunction("app/workbench.mjs", "processSystemLogin").setReturnFunctionMode());
+
+	addFeature("systemInfos", new LazyFunction("features/system-infos.mjs", "getView"));
+
+	addFeature("toolsJSPlayground", new LazyFunction('features/js-playground.mjs', "getView"));
 }
 
 /**
@@ -181,29 +194,6 @@ function applyConfig(configJson: string, authenticated = false) {
 		WbProperties.applyGroup("systemInfo", appConfig.getSystemInfo());
 		systemInfo = appConfig.getSystemInfo();
 	}
-
-	applyExtensionsToConfig(appConfig);
-}
-
-/**
- */
-function applyExtensionsToConfig(config: WbAppConfig) {
-	// apply extension sidebar items to the app config
-	// so they get installed in the sidebar
-	WbExtensionSidebarItems.forEach((extItem) => {
-		const topic = config.getTopicList().find((topic) => topic.text === extItem.topic);
-		if (topic) {
-			topic.items.push(...extItem.items);
-		}else{
-			//create a new topic entry if it does not exist
-			let sbarTopic = {
-				text: extItem.topic,
-				icon: extItem.icon || "",
-				items: extItem.items
-			};
-			config.getTopicList().push(sbarTopic);
-		}
-	});
 }
 
 /**

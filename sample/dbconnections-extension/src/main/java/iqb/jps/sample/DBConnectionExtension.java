@@ -19,29 +19,27 @@ import iqb.jps.annotation.WebService;
 /**
  */
 public class DBConnectionExtension {
-    protected static final String StatusOk = "ok";
-    protected static final String StatusError = "error";
+    private static final String StatusOk = "ok";
+    private static final String StatusError = "error";
 
-    protected ExtensionInstanceContext ctx;
-    protected JsonTool jsonTool;
-    protected Map<String, DbConnectionDef> connectionMap;
-    protected Path dataFile;
-    protected Charset encoding;
+    private JsonTool jsonTool;
+    private Path dataFile;
+    private Charset encoding;
+    private Map<String, DbConnectionDef> connectionMap;
 
     public DBConnectionExtension(ExtensionInstanceContext ctx) throws IOException {
-        this.ctx = ctx;
         this.dataFile = Paths.get(ctx.getDataPath().toString(), "db-connections.json");
         this.jsonTool = ctx.getJsonTool();
         this.encoding = ctx.getEncoding();
         this.loadConnections();
 
-        this.createWebAppFeature(ctx);
+        this.configureWebAppFeature(ctx);
     }
 
     /********************************************************************************/
     /* Web API */
     /********************************************************************************/
-    protected static final String apiRoot = "${jps.webservice.url.root}/service/";
+    private static final String apiRoot = "${jps.webservice.url.root}/service/";
 
     /**
      */
@@ -83,25 +81,22 @@ public class DBConnectionExtension {
         }
         return response.setStatusOk();
     }
-
-    /********************************************************************************/
-    /********************************************************************************/
-
+ 
+    /* End Web API */
+    
     /**
      * Add this extension as a feature to the web app
      */
-    protected void createWebAppFeature(ExtensionInstanceContext ctx) throws IOException {
+    private void configureWebAppFeature(ExtensionInstanceContext ctx) throws IOException {
         ctx.getWebAppConfigurator()
-                .addFeature("toolsDBConnections: new LazyFunction('features/db-connections.mjs', 'getView')")
-                .addConfiguration(
-                        "{topic: 'Tools', items: [{ text: 'My DB Connections', feature: 'toolsDBConnections' }]}")
+                .addFeature(ctx.readStringFrom(getClass(), "/create-feature.js").trim())
                 .addResource("/app/features/db-connections.mjs",
                         ctx.readResourceFrom(getClass(), "/db-connections.mjs"));
     }
 
     /**
      */
-    protected void loadConnections() throws IOException {
+    private void loadConnections() throws IOException {
         connectionMap = new LinkedHashMap<>();
         DbConnectionDef[] data;
 
@@ -119,14 +114,14 @@ public class DBConnectionExtension {
 
     /**
      */
-    protected void saveConnections() throws IOException {
+    private void saveConnections() throws IOException {
         Files.writeString(dataFile, jsonTool.toPrettyString(connectionMap.values()), encoding,
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     /**
      */
-    protected void createDemoData() {
+    private void createDemoData() {
         List<DbConnectionDef> defList = new ArrayList<>();
         defList.add(new DbConnectionDef()
                 .setName("Oracle Test-Server")
