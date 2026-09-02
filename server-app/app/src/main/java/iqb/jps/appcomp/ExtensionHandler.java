@@ -184,34 +184,35 @@ public class ExtensionHandler {
         try {
             if (def.featureOnly) {
                 cart.initFeatureDefinition();
-            } else {
-                file = resolvePath(def.hasDevPath() ? def.getDevPath() : def.getBinPath(), def);
-                if (def.hasDevPath()) {
-                    String path = file.toString();
-                    LOG.info("HINT use extension development path for: [{}] devPath=[{}]", def, path);
-                }
-                Tool.createFileURL(file, urls, def, errors);
-
-                for (String lib : def.getLibs()) {
-                    file = resolvePath(lib, def);
-                    Tool.createFileURL(file, urls, def, errors);
-                }
-
-                if (!errors.isEmpty()) {
-                    throw new UncheckedExtensionException(
-                            String.format("Extension binary init failed: %s", errors));
-                } else {
-                    ClassLoader rootLoader = def.hasAppScope() ? Thread.currentThread().getContextClassLoader()
-                            : ClassLoader.getPlatformClassLoader();
-                    cart.loader = new URLClassLoader(urls.toArray(new URL[urls.size()]), rootLoader);
-
-                    cart.clazz = cart.loader.loadClass(def.getClassName());
-                    cart.initConstructor();
-                    cart.initRunMethod();
-                    cart.initHttpEndpoints();
-                    cart.initFeatureDefinition();
-                }
+                return;
             }
+            file = resolvePath(def.hasDevPath() ? def.getDevPath() : def.getBinPath(), def);
+            if (def.hasDevPath()) {
+                String path = file.toString();
+                LOG.info("HINT use extension development path for: [{}] devPath=[{}]", def, path);
+            }
+            Tool.createFileURL(file, urls, def, errors);
+
+            for (String lib : def.getLibs()) {
+                file = resolvePath(lib, def);
+                Tool.createFileURL(file, urls, def, errors);
+            }
+
+            if (!errors.isEmpty()) {
+                throw new UncheckedExtensionException(
+                        String.format("Extension binary init failed: %s", errors));
+            } else {
+                ClassLoader rootLoader = def.hasAppScope() ? Thread.currentThread().getContextClassLoader()
+                        : ClassLoader.getPlatformClassLoader();
+                cart.loader = new URLClassLoader(urls.toArray(new URL[urls.size()]), rootLoader);
+
+                cart.clazz = cart.loader.loadClass(def.getClassName());
+                cart.initConstructor();
+                cart.initRunMethod();
+                cart.initHttpEndpoints();
+                cart.initFeatureDefinition();
+            }
+
             LOG.info("Extension installed: {} : {}", cart.name, cart.def);
         } catch (UncheckedExtensionException e) {
             cart.close();
@@ -262,9 +263,9 @@ public class ExtensionHandler {
                 throw new UncheckedExtensionException(
                         String.format("NO extension definition-file found [%s]", defFile.getFileName()));
             }
-            if (def != null) {
-                readFeatureDefinition(name, def);
-            }
+
+            readFeatureDefinition(name, def);
+
         } catch (IOException e) {
             throw new UncheckedExtensionException(
                     String.format("Error reading extension definition-file [%s]", defFile.getFileName()), e);
