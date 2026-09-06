@@ -38,8 +38,6 @@ public class ServerConnection {
     }
 
     /**
-     * @param onConnectionLost invoked (on the reader thread) if the connection drops
-     *                         unexpectedly, i.e. not via a local disconnect()/exit call
      */
     public boolean connect(Consumer<String> serverOutputConsumer, Runnable onConnectionLost) {
         if (isConnected()) {

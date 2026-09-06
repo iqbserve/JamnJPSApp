@@ -10,10 +10,12 @@ import iqb.jps.appcomp.ServerConnection;
 
 /**
  * <pre>
- * Entry point of the CLI application. Connects to a running JamnJPSApp instance
- * via the CLIInterface socket and provides an interactive console.
+ * Standalone command line interface app 
+ * that is capable to connect to the JamnJPSApp via a local socket connection.
  * 
- * Supported arguments (name=value): cli.port=<port>
+ * The app serves as a CLI client to the JPSApp command interface.
+ * 
+ * Supported arguments: cli.port=<port>
  * </pre>
  */
 public class CliApp {
