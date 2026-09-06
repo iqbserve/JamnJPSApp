@@ -61,6 +61,10 @@ public class OperatingSystemInterface {
         return osFunctions;
     }
 
+    public Charset getShellEncoding() {
+        return shellEncoding;
+    }
+    
     /**
      * The function interface
      */

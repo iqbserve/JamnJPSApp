@@ -14,7 +14,11 @@ import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.LogManager;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +29,9 @@ import iqb.jps.appcomp.JavaScriptProvider;
 import iqb.jps.appcomp.OperatingSystemInterface;
 import iqb.jps.appcomp.WebAppConfigurator;
 import iqb.jps.boot.ApplicationLauncher;
+import iqb.jps.cliapi.CliInterface;
+import iqb.jps.cliapi.CliInterface.CliCommand;
+import iqb.jps.cliapi.CliCommandRegistry;
 import iqb.jps.core.AppConfig;
 import iqb.jps.core.HelperTool;
 import iqb.jps.core.JsonTool;
@@ -62,6 +69,7 @@ public class JPSApp {
 
     private static final Logger LOG = LoggerFactory.getLogger(JPSApp.class);
     private static final HelperTool Tool = HelperTool.getInstance();
+    private static final String SHUTDOWN_TEXT = "Shutdown application initiated...";
 
     private Properties buildProperties = new Properties();
     private String appName = "";
@@ -78,6 +86,7 @@ public class JPSApp {
     private WsoMessageDispatcher wsoMessageDispatcher = null;
     private ExtensionHandler extensionHandler = null;
 
+    private CliInterface cliInterface = null;
     private Optional<JavaScriptProvider> javaScript = Optional.empty();
 
     /**
@@ -105,12 +114,36 @@ public class JPSApp {
     }
 
     /**
+     * Shutdown the application and release resources gracefully.
+     * This method stops the server and closes the CLI interface if they are
+     * initialized.
+     */
+    private synchronized void shutdown() {
+
+        LOG.info(SHUTDOWN_TEXT);
+        Executors.newSingleThreadScheduledExecutor().schedule(() -> { // NOSONAR
+            try {
+                if (server != null) {
+                    server.stop();
+                }
+                if (cliInterface != null) {
+                    cliInterface.close();
+                }
+                System.exit(0);
+            } catch (Exception e) {
+                LOG.error("Error during shutdown", e);
+                System.exit(1);
+            }
+        }, 1, TimeUnit.SECONDS);
+
+    }
+
+    /**
      */
     private String getStartInfo() {
         String crlf = "\n";
         return new StringBuilder(getASCIILogo())
                 .append(" JPSApp startet :-)").append(crlf)
-//                .append("JPSApp STARTED").append(crlf)
                 .append("  Home: [").append(appHome).append("]").append(crlf)
                 .append("  Server running at: ").append(server.getURI()).append(crlf)
                 .append(crlf)
@@ -136,7 +169,7 @@ public class JPSApp {
         initContentProvider();
         initWebServiceProvider();
         initWebSocketProvider();
-
+        initCliInterface();
         initAppServicesAndObjects();
 
     }
@@ -323,6 +356,21 @@ public class JPSApp {
 
     /**
      */
+    private void initCliInterface() {
+        if (appConfig.isCliInterfaceEnabled()) {
+            cliInterface = new CliInterface(appConfig.getCliInterfacePort())
+                    .setEncoding(this.standardEncoding)
+                    .setCommandProcessor(CliInterface.DefaultCommandProcessor);
+            try {
+                cliInterface.start();
+            } catch (IOException e) {
+                LOG.error("Error starting CLI Interface", e);
+            }
+        }
+    }
+
+    /**
+     */
     private void initAppServicesAndObjects() throws WebServiceDefinitionException, IOException {
 
         // create a web app configurator
@@ -351,6 +399,8 @@ public class JPSApp {
         // register app web services
         webServiceProvider.registerServices(() -> WebAppConfigService.getInstance(this));
         webServiceProvider.registerServices(JSPlaygroundService::getInstance);
+
+        createCliCommands();
 
         LOG.info("App Services and objects installed");
     }
@@ -419,12 +469,51 @@ public class JPSApp {
      * Get the ASCII art logo of the application.
      */
     public String getASCIILogo() {
-        return String.join("\n"
-,"    _                       "
-,"    | | __ _ _ __ ___  _ __  "
-," _  | |/ _` | '_ ` _ \\| '_ \\ "
-,"| |_| | (_| | | | | | | | | |"
-," \\___/ \\__,_|_| |_| |_|_| |_|"
-);
+        return String.join("\n", "    _                       ", "    | | __ _ _ __ ___  _ __  ",
+                " _  | |/ _` | '_ ` _ \\| '_ \\ ", "| |_| | (_| | | | | | | | | |", " \\___/ \\__,_|_| |_| |_|_| |_|");
     }
+
+    /**
+     */
+    private void createCliCommands() {
+        if (appConfig.isCliInterfaceEnabled()) {
+            CliCommandRegistry registry = CliCommandRegistry.getInstance();
+            String ls = System.lineSeparator();
+
+            // shutdown the application
+            registry.addCommand(new CliCommand("shutdown", (cmdArgs, ctx) -> {
+                if ("YES".equals(ctx.queryInput("Confirm shutdown (YES)"))) {
+                    shutdown();
+                    return SHUTDOWN_TEXT;
+                }
+                return "Shutdown cancelled";
+            }));
+
+            // list config infos
+            registry.addCommand(new CliCommand("list", (cmdArgs, ctx) -> {
+                if (cmdArgs.hasArg("config")) {
+                    return Tool.toMap(appConfig.getProperties())
+                            .entrySet()
+                            .stream()
+                            .sorted(Map.Entry.comparingByKey())
+                            .map(e -> e.getKey() + "=" + e.getValue())
+                            .collect(Collectors.joining(ls));
+                } else if (cmdArgs.hasArg("props")) {
+                    return Tool.toMap(System.getProperties())
+                            .entrySet()
+                            .stream()
+                            .sorted(Map.Entry.comparingByKey())
+                            .map(e -> e.getKey() + "=" + e.getValue())
+                            .collect(Collectors.joining(ls));
+                } else if (cmdArgs.hasArg("webservice")) {
+                    return new StringBuffer()
+                            .append(String.join(ls, getWebServiceProvider().getAllServicePathNames()))
+                            .toString();
+                }
+
+                return "use arg [config | props | webservice]";
+            }));
+        }
+    }
+
 }

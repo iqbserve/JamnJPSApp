@@ -96,6 +96,11 @@
 			</dependency>
 			<dependency>
 				<groupId>iqb.jps</groupId>
+				<artifactId>jpsapp-cli</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>iqb.jps</groupId>
 				<artifactId>jamn-server</artifactId>
 				<version>${project.version}</version>
 			</dependency>

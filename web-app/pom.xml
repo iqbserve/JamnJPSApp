@@ -57,7 +57,7 @@
 						</goals>
 						<phase>generate-resources</phase>
 						<configuration>
-							<arguments>install</arguments>
+							<arguments>install --no-audit --no-fund</arguments>
 						</configuration>
 					</execution>
 					<execution>

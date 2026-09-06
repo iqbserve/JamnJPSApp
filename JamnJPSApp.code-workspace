@@ -8,17 +8,28 @@
 		"configurations": [
 			{
 				"type": "java",
-				"name": "App over Launcher in workspace",
+				"name": "JPSApp in workspace",
 				"request": "launch",
 				"console": "internalConsole",
 				"cwd": "./server-app/app",
 				"mainClass": "iqb.jps.boot.ApplicationLauncher",
 				"projectName": "jamn-JPSApp",
-				"args": ""
+				"vmArgs": ""
 			},
 			{
 				"type": "java",
-				"name": "Launcher from JAR",
+				"name": "CLI App in workspace",
+				"request": "launch",
+				"console": "integratedTerminal",
+				"cwd": "${workspaceFolder}/server-app/app",
+				"mainClass": "iqb.jps.boot.ApplicationLauncher",
+				"projectName": "jamn-JPSApp",
+				"args": "app=cli cli.port=9091",
+				"vmArgs": ""
+			},
+			{
+				"type": "java",
+				"name": "JPSApp from JAR",
 				"request": "launch",
 				"cwd": "${workspaceFolder}/server-app/app",
 				"mainClass": "iqb.jps.boot.ApplicationLauncher",
@@ -26,7 +37,8 @@
 				"classPaths": [
 					"${workspaceFolder}/server-app/app/target/jamn-JPSApp-0.0.1-SNAPSHOT.jar"
 				],
-				"args": ""
+				"args": "",
+				"vmArgs": ""
 			}
 		]
 	},
@@ -55,6 +67,7 @@
 				"command": "clean install"
 			}
 		],
-		"js/ts.validate.enabled": true
+		"js/ts.validate.enabled": true,
+		"java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx8G -Xms100m -Xlog:disable"
 	}
 }

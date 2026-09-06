@@ -47,6 +47,14 @@
             <groupId>iqb.jps</groupId>
             <artifactId>jaman-jpswebapp</artifactId>
         </dependency>
+        <!-- provided: keeps jpsapp-cli off the runtime/assembly classpath but puts its classes
+             on the IDE/reactor compile classpath so the Launcher can resolve CliApp in IDE mode -->
+        <dependency>
+            <groupId>iqb.jps</groupId>
+            <artifactId>jpsapp-cli</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -65,6 +73,35 @@
                     <execution>
                         <id>default-jar</id>
                         <phase>none</phase>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <!-- jpsapp-cli is now a provided dependency (IDE classpath only) and is therefore
+                         excluded from the runtime dependencySets in the assembly descriptors; copy it out
+                         explicitly here with a fixed name, giving the Launcher a guaranteed cli jar file name -->
+                    <execution>
+                        <id>copy-cli-jar</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>iqb.jps</groupId>
+                                    <artifactId>jpsapp-cli</artifactId>
+                                    <version>${project.version}</version>
+                                    <type>jar</type>
+                                    <destFileName>${jps.cli.jar.name}</destFileName>
+                                    <outputDirectory>${project.build.directory}/cli-libs</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -103,4 +140,48 @@
             </resource>
         </resources>
     </build>
+
+    <profiles>
+        <!-- m2e's incremental workspace build cannot copy a reactor sibling's jar before it is
+             physically packaged (MDEP-187); real "mvn package" reactor builds are unaffected since
+             cli-app is always packaged before app runs. Only silences the IDE-only build error. -->
+        <profile>
+            <id>m2e-lifecycle-mapping</id>
+            <activation>
+                <property>
+                    <name>m2e.version</name>
+                </property>
+            </activation>
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>org.eclipse.m2e</groupId>
+                            <artifactId>lifecycle-mapping</artifactId>
+                            <version>1.0.0</version>
+                            <configuration>
+                                <lifecycleMappingMetadata>
+                                    <pluginExecutions>
+                                        <pluginExecution>
+                                            <pluginExecutionFilter>
+                                                <groupId>org.apache.maven.plugins</groupId>
+                                                <artifactId>maven-dependency-plugin</artifactId>
+                                                <versionRange>[3.0.0,)</versionRange>
+                                                <goals>
+                                                    <goal>copy</goal>
+                                                </goals>
+                                            </pluginExecutionFilter>
+                                            <action>
+                                                <ignore />
+                                            </action>
+                                        </pluginExecution>
+                                    </pluginExecutions>
+                                </lifecycleMappingMetadata>
+                            </configuration>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -74,6 +74,8 @@ public class AppConfig {
     private static final String DEFAULT_CONFIG = String.join("\n",
             "#Profile", "jps.profile" + "=app", "",
             "#HTTP Server port", "http.server.port=9090", "",
+            "#CLI interface port", "cli.interface.port=9091", "",
+            "#CLI interface enabled", "cli.interface.enabled=" + FALSE, "",
             "#System Web files root folder\n#intended for the system web app\n#no drive letter, start with '/' = absolute path, else relative to jar or to start folder", "jps.web.root=" + WEB_FILE_ROOT, "",
             "#User Web files local folder\n#intended for web app customization\n#and extensions adding\n#no drive letter, start with '/' = absolute path, else relative to start folder\n#e.g. /my-local-path/user-http, user-http", "#jps.user.web.local.root=user-http", "",
             "#WebApp main Page", "jps.webapp.main.page=/workbench.html", "",
@@ -128,6 +130,10 @@ public class AppConfig {
 
     public int getHttpServerPort() {
         return Integer.valueOf(props.getProperty("http.server.port", "9090"));
+    }
+
+    public int getCliInterfacePort() {
+        return Integer.valueOf(props.getProperty("cli.interface.port", "9091"));
     }
 
     /**
@@ -194,6 +200,10 @@ public class AppConfig {
         return Boolean.parseBoolean(props.getProperty("jps.shutdown.warnings.enabled", TRUE));
     }
 
+    public boolean isCliInterfaceEnabled() {
+        return Boolean.parseBoolean(props.getProperty("cli.interface.enabled", FALSE));
+    }
+    
     public String getScriptRoot() {
         return props.getProperty("jps.script.root", SCRIPT_ROOT);
     }

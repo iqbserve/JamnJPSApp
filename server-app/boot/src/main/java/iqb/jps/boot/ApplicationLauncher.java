@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -55,16 +56,91 @@ public class ApplicationLauncher {
 
     private static final Logger LOG = Logger.getLogger(ApplicationLauncher.class.getName());
 
-    //false for suppressing hook warnings
+    // false for suppressing hook warnings
     private static boolean HookWarnings = true;
 
-    //maintain the order
+    // list of required config properties in the build.info.properties file
     private static final String[] REQUIRED_PROPERTIES = {
             "appname",
             "app.class.name",
             "jar.libsdir",
-            "jar.temp.dir.prefix" // prefix for the temporary directory where embedded JARs are extracted
+            "jar.temp.dir.prefix",
+            "cli.class.name",
+            "cli.libs.filter",
+            "cli.jar.name"
     };
+
+    private static class Config {
+        private final Properties props = new Properties();
+
+        private final List<String> jpsArgs = new ArrayList<>();
+        private final List<String> cliArgs = new ArrayList<>();
+
+        private Config(Properties buildProps, String[] args) {
+            this.props.putAll(buildProps);
+            this.props.put("app", "jps");
+
+            for (String arg : args) {
+                if (arg.startsWith("app=")) {
+                    props.setProperty("app", arg.substring("app=".length()));
+                    continue;
+                }
+                if (arg.startsWith("cli.")) {
+                    cliArgs.add(arg);
+                } else {
+                    jpsArgs.add(arg);
+                }
+            }
+        }
+
+        boolean isCliMode() {
+            return props.getProperty("app", "").equalsIgnoreCase("cli");
+        }
+
+        String[] getAppArgs() {
+            if (isCliMode()) {
+                return cliArgs.toArray(new String[0]);
+            }
+            return jpsArgs.toArray(new String[0]);
+        }
+
+        String getAppname() {
+            return props.getProperty("appname");
+        }
+
+        String getAppClassName() {
+            return props.getProperty("app.class.name");
+        }
+
+        String getJarLibsDir() {
+            return props.getProperty("jar.libsdir");
+        }
+
+        String getJarTempDirPrefix() {
+            return props.getProperty("jar.temp.dir.prefix");
+        }
+
+        String getCliClassName() {
+            return props.getProperty("cli.class.name");
+        }
+
+        String getCliLibsFilter() {
+            return props.getProperty("cli.libs.filter");
+        }
+
+        String getCliJarName() {
+            return props.getProperty("cli.jar.name");
+        }
+
+        void checkRequiredProperties() {
+            for (String key : REQUIRED_PROPERTIES) {
+                if (!props.containsKey(key) || props.getProperty(key).isBlank()) {
+                    throw new IllegalStateException(
+                            String.format("Missing required property [%s] in [%s]", key, BUILD_INFO_PROPERTIES));
+                }
+            }
+        }
+    }
 
     private ApplicationLauncher() {
         // private constructor to prevent instantiation
@@ -75,18 +151,25 @@ public class ApplicationLauncher {
      */
     public static void main(String[] args) throws Exception {
         try {
-            Properties buildProps = loadBuildProperties();
-            for (String key : REQUIRED_PROPERTIES) {
-                if (!buildProps.containsKey(key) || buildProps.getProperty(key).isBlank()) {
-                    throw new IllegalStateException(
-                            String.format("Missing required property [%s] in [%s]", key, BUILD_INFO_PROPERTIES));
-                }
-            }
+            Config config = new Config(loadBuildProperties(), args);
+            config.checkRequiredProperties();
 
-            String appName = buildProps.getProperty(REQUIRED_PROPERTIES[0]);
-            String appClassName = buildProps.getProperty(REQUIRED_PROPERTIES[1]);
-            String libsDir = buildProps.getProperty(REQUIRED_PROPERTIES[2]);
-            String tempDirPrefix = buildProps.getProperty(REQUIRED_PROPERTIES[3]);
+            boolean cliMode = config.isCliMode();
+
+            String appName = cliMode ? config.getAppname() + " CLI" : config.getAppname();
+            String appClassName = cliMode
+                    ? config.getCliClassName()
+                    : config.getAppClassName();
+            String libsDir = config.getJarLibsDir();
+            String tempDirPrefix = config.getJarTempDirPrefix();
+            Set<String> libsFilter = cliMode
+                    ? parseLibsFilter(config.getCliLibsFilter())
+                    : Collections.emptySet();
+            // mandatory regardless of the (editable) trimming filter above, so the cli jar
+            // can never be forgotten
+            Set<String> mandatoryJars = cliMode
+                    ? Set.of(config.getCliJarName())
+                    : Collections.emptySet();
 
             Path appJarPath = locateExecutableJar();
 
@@ -100,14 +183,14 @@ public class ApplicationLauncher {
 
                 Class<?> appClass = Class.forName(appClassName, true, systemLoader);
                 Method mainMethod = appClass.getMethod("main", String[].class);
-                mainMethod.invoke(null, (Object) args);
+                mainMethod.invoke(null, (Object) config.getAppArgs());
                 return;
             }
 
             LOG.log(Level.INFO, "Launching [{0}] in standard executable JAR mode.", appName);
 
             // standard executable JAR Mode
-            Path modulesDir = extractEmbeddedJars(appJarPath, libsDir, tempDirPrefix);
+            Path modulesDir = extractEmbeddedJars(appJarPath, libsDir, tempDirPrefix, libsFilter, mandatoryJars);
             URL[] urls = buildClassLoaderUrls(appJarPath, modulesDir);
 
             // using the PlatformClassLoader as parent to maintain access to Java platform
@@ -126,7 +209,7 @@ public class ApplicationLauncher {
             Method mainMethod = appClass.getMethod("main", String[].class);
 
             // call the app main method
-            mainMethod.invoke(null, (Object) args);
+            mainMethod.invoke(null, (Object) config.getAppArgs());
 
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Failed to launch application", e);
@@ -210,8 +293,49 @@ public class ApplicationLauncher {
     }
 
     /**
+     * <pre>
+     * Splits a comma separated list of name tokens (e.g. "jpsapp-core,jackson-databind")
+     * used to restrict which embedded module jars get extracted.
+     * An empty/blank input means "no restriction" (all jars are extracted).
+     * </pre>
      */
-    private static Path extractEmbeddedJars(Path sourcePath, String libsDir, String tempDirPrefix) throws IOException {
+    private static Set<String> parseLibsFilter(String csv) {
+        if (csv == null || csv.isBlank()) {
+            return Collections.emptySet();
+        }
+        Set<String> tokens = new HashSet<>();
+        for (String token : csv.split(",")) {
+            String trimmed = token.trim();
+            if (!trimmed.isEmpty()) {
+                tokens.add(trimmed);
+            }
+        }
+        return tokens;
+    }
+
+    /**
+     * <pre>
+     * A jar file name matches the filter if it is empty (no restriction),
+     * the file name contains at least one of the given tokens,
+     * or the file name is explicitly listed as mandatory.
+     * </pre>
+     */
+    private static boolean matchesLibsFilter(String fileName, Set<String> libsFilter, Set<String> mandatoryJars) {
+        if (libsFilter.isEmpty() || mandatoryJars.contains(fileName)) {
+            return true;
+        }
+        for (String token : libsFilter) {
+            if (fileName.contains(token)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     */
+    private static Path extractEmbeddedJars(Path sourcePath, String libsDir, String tempDirPrefix,
+            Set<String> libsFilter, Set<String> mandatoryJars) throws IOException {
         // remove leftovers from previous runs whose files were still locked
         // (e.g. GraalVM/Truffle's) at shutdown time
         cleanupStaleTempDirectories(tempDirPrefix);
@@ -228,6 +352,9 @@ public class ApplicationLauncher {
                         && entry.getName().endsWith(".jar")) {
 
                     Path fileName = Path.of(entry.getName()).getFileName();
+                    if (!matchesLibsFilter(fileName.toString(), libsFilter, mandatoryJars)) {
+                        continue;
+                    }
                     Path target = tempDir.resolve(fileName);
 
                     try (InputStream is = jarFile.getInputStream(entry)) {
@@ -256,12 +383,12 @@ public class ApplicationLauncher {
                     .forEach(dir -> {
                         List<String> failed = ApplicationLauncher.deleteRecursivelyBestEffort(dir);
                         if (!failed.isEmpty()) {
-                            LOG.log(Level.WARNING, "Failed to fully delete stale temp directorie: [{}]", dir);
+                            LOG.log(Level.WARNING, "Failed to fully delete stale temp directorie: [{0}]", dir);
                         }
                     });
             LOG.log(Level.INFO, "Successful cleanup for stale temporary directories.");
         } catch (IOException e) {
-            LOG.log(Level.FINE, "Could not scan for stale temp directories in [{0}]: {1}",
+            LOG.log(Level.FINE, "Could not scan for stale temp directories in [{0}]: [{1}]",
                     new Object[] { tempRoot, e.getMessage() });
         }
     }
@@ -361,7 +488,7 @@ public class ApplicationLauncher {
      */
     private static void hookLog(Level logLevel, Object message) {
 
-        //suppress warnings if enabled
+        // suppress warnings if enabled
         if (!HookWarnings && Level.WARNING.equals(logLevel)) {
             return;
         }

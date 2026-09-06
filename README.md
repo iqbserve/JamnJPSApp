@@ -1,10 +1,10 @@
 # Jamn - Personal Server App
 
-The JamnJPSApp is a <b>Java-SE based</b>, experimental scaffold for building individual All-in-One apps and tools using an also JSE based http capeable micro Server (ca. 70 KB).
+The JamnJPSApp is a <b>Java-SE based</b>, experimental skeleton for building individual All-in-One apps and tools using a lightweight JSE based HTTP-capable Micro-Server (approx. 70 KB).
 
-The Java app functions as an extensible micro server. The Web app as the extensible frontend. Packaged in one executable JAR.
+The Java App functions as an extensible backend and the Web App as the extensible frontend - both packaged in a single executable JAR.
 
-"Extensible" means in this context that new functionalities can be implemented without the need to modify or rebuild the application itself.
+"Extensible" in this context means that new features can be implemented without having to modify or rebuild the application itself.
 
 It can be done by:
 - adding java extensions for the server 

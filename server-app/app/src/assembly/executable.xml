@@ -15,6 +15,14 @@
                 <include>**/*</include>
             </includes>
         </fileSet>
+        <!-- jpsapp-cli is copied by GAV (not a project dependency) so it stays decoupled from app -->
+        <fileSet>
+            <directory>${project.build.directory}/cli-libs</directory>
+            <outputDirectory>${jps.executable.libs.dir}</outputDirectory>
+            <includes>
+                <include>*.jar</include>
+            </includes>
+        </fileSet>
     </fileSets>
 
     <dependencySets>
