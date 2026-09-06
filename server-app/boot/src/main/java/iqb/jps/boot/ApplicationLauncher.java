@@ -21,11 +21,11 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -33,6 +33,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -71,14 +72,16 @@ public class ApplicationLauncher {
     };
 
     private static class Config {
-        private final Properties props = new Properties();
+        protected static final String JPS_APP = "jps";
+        protected static final String CLI_APP = "cli";
 
+        private final Properties props = new Properties();
         private final List<String> jpsArgs = new ArrayList<>();
         private final List<String> cliArgs = new ArrayList<>();
 
         private Config(Properties buildProps, String[] args) {
             this.props.putAll(buildProps);
-            this.props.put("app", "jps");
+            this.props.put("app", JPS_APP); // standard mode is JPS_APP
 
             for (String arg : args) {
                 if (arg.startsWith("app=")) {
@@ -94,7 +97,7 @@ public class ApplicationLauncher {
         }
 
         boolean isCliMode() {
-            return props.getProperty("app", "").equalsIgnoreCase("cli");
+            return props.getProperty("app", "").equalsIgnoreCase(CLI_APP);
         }
 
         String[] getAppArgs() {
@@ -105,31 +108,44 @@ public class ApplicationLauncher {
         }
 
         String getAppname() {
+            if (isCliMode()) {
+                return props.getProperty("appname") + " CLI";
+            }
             return props.getProperty("appname");
         }
 
+        String getJarTempDirPrefix() {
+            if (isCliMode()) {
+                return props.getProperty("jar.temp.dir.prefix") + "cli-";
+            }
+            return props.getProperty("jar.temp.dir.prefix");
+        }
+
         String getAppClassName() {
+            if (isCliMode()) {
+                return props.getProperty("cli.class.name");
+            }
             return props.getProperty("app.class.name");
+        }
+
+        Set<String> getLibsFilter() {
+            if (isCliMode()) {
+                return Arrays.stream(props.getProperty("cli.libs.filter", "").split(","))
+                        .map(String::trim)
+                        .collect(Collectors.toSet());
+            }
+            return Collections.emptySet();
+        }
+
+        Set<String> getMandatoryJars() {
+            if (isCliMode()) {
+                return Set.of(props.getProperty("cli.jar.name"));
+            }
+            return Collections.emptySet();
         }
 
         String getJarLibsDir() {
             return props.getProperty("jar.libsdir");
-        }
-
-        String getJarTempDirPrefix() {
-            return props.getProperty("jar.temp.dir.prefix");
-        }
-
-        String getCliClassName() {
-            return props.getProperty("cli.class.name");
-        }
-
-        String getCliLibsFilter() {
-            return props.getProperty("cli.libs.filter");
-        }
-
-        String getCliJarName() {
-            return props.getProperty("cli.jar.name");
         }
 
         void checkRequiredProperties() {
@@ -154,43 +170,32 @@ public class ApplicationLauncher {
             Config config = new Config(loadBuildProperties(), args);
             config.checkRequiredProperties();
 
-            boolean cliMode = config.isCliMode();
-
-            String appName = cliMode ? config.getAppname() + " CLI" : config.getAppname();
-            String appClassName = cliMode
-                    ? config.getCliClassName()
-                    : config.getAppClassName();
-            String libsDir = config.getJarLibsDir();
-            String tempDirPrefix = config.getJarTempDirPrefix();
-            Set<String> libsFilter = cliMode
-                    ? parseLibsFilter(config.getCliLibsFilter())
-                    : Collections.emptySet();
-            // mandatory regardless of the (editable) trimming filter above, so the cli jar
-            // can never be forgotten
-            Set<String> mandatoryJars = cliMode
-                    ? Set.of(config.getCliJarName())
-                    : Collections.emptySet();
-
             Path appJarPath = locateExecutableJar();
 
             // use IDE / unpacked (../target/classes) execution
             // with the system class loader
             if (Files.isDirectory(appJarPath)) {
-                LOG.log(Level.INFO, "Launching [{0}] in IDE/unpacked mode. Delegating to System ClassLoader.", appName);
+                LOG.log(Level.INFO, "Launching [{0}] in IDE/unpacked mode. Delegating to System ClassLoader.",
+                        config.getAppname());
 
                 ClassLoader systemLoader = ClassLoader.getSystemClassLoader();
                 Thread.currentThread().setContextClassLoader(systemLoader);
 
-                Class<?> appClass = Class.forName(appClassName, true, systemLoader);
+                Class<?> appClass = Class.forName(config.getAppClassName(), true, systemLoader);
                 Method mainMethod = appClass.getMethod("main", String[].class);
                 mainMethod.invoke(null, (Object) config.getAppArgs());
                 return;
             }
 
-            LOG.log(Level.INFO, "Launching [{0}] in standard executable JAR mode.", appName);
+            LOG.log(Level.INFO, "Launching [{0}] in standard executable JAR mode.", config.getAppname());
 
             // standard executable JAR Mode
-            Path modulesDir = extractEmbeddedJars(appJarPath, libsDir, tempDirPrefix, libsFilter, mandatoryJars);
+            Path modulesDir = extractEmbeddedJars(appJarPath,
+                    config.getJarLibsDir(),
+                    config.getJarTempDirPrefix(),
+                    config.getLibsFilter(),
+                    config.getMandatoryJars());
+
             URL[] urls = buildClassLoaderUrls(appJarPath, modulesDir);
 
             // using the PlatformClassLoader as parent to maintain access to Java platform
@@ -200,12 +205,12 @@ public class ApplicationLauncher {
 
             // register a recursive cleanup hook on shutdown
             // to delete the temporary directory and close the class loader
-            registerShutdownCleanup(appClassLoader, modulesDir, appName);
+            registerShutdownCleanup(appClassLoader, modulesDir, config.getAppname());
 
             Thread currentThread = Thread.currentThread();
             currentThread.setContextClassLoader(appClassLoader);
 
-            Class<?> appClass = Class.forName(appClassName, true, appClassLoader);
+            Class<?> appClass = Class.forName(config.getAppClassName(), true, appClassLoader);
             Method mainMethod = appClass.getMethod("main", String[].class);
 
             // call the app main method
@@ -290,27 +295,6 @@ public class ApplicationLauncher {
 
         // Replace the entire ACL with a single entry for the current user only
         aclView.setAcl(List.of(ownerEntry));
-    }
-
-    /**
-     * <pre>
-     * Splits a comma separated list of name tokens (e.g. "jpsapp-core,jackson-databind")
-     * used to restrict which embedded module jars get extracted.
-     * An empty/blank input means "no restriction" (all jars are extracted).
-     * </pre>
-     */
-    private static Set<String> parseLibsFilter(String csv) {
-        if (csv == null || csv.isBlank()) {
-            return Collections.emptySet();
-        }
-        Set<String> tokens = new HashSet<>();
-        for (String token : csv.split(",")) {
-            String trimmed = token.trim();
-            if (!trimmed.isEmpty()) {
-                tokens.add(trimmed);
-            }
-        }
-        return tokens;
     }
 
     /**
