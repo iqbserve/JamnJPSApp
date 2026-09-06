@@ -1,0 +1,1 @@
+call java -jar ./server-app/app/target/jamn-JPSApp-0.0.1-SNAPSHOT.jar app=cli cli.port=9091
