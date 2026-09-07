@@ -60,20 +60,28 @@ public class ApplicationLauncher {
     // false for suppressing hook warnings
     private static boolean HookWarnings = true;
 
-    // list of required config properties in the build.info.properties file
-    private static final String[] REQUIRED_PROPERTIES = {
-            "appname",
-            "app.class.name",
-            "jar.libsdir",
-            "jar.temp.dir.prefix",
-            "cli.class.name",
-            "cli.libs.filter",
-            "cli.jar.name"
-    };
 
     private static class Config {
         protected static final String JPS_APP = "jps";
         protected static final String CLI_APP = "cli";
+        protected static final String key_appname = "appname";
+        protected static final String key_app_class_name = "app.class.name";
+        protected static final String key_jar_libsdir = "jar.libsdir";
+        protected static final String key_jar_temp_dir_prefix = "jar.temp.dir.prefix";
+        protected static final String key_cli_class_name = "cli.class.name";
+        protected static final String key_cli_libs_filter = "cli.libs.filter";
+        protected static final String key_cli_jar_name = "cli.jar.name";
+
+        // list of required config properties in the build.info.properties file
+        private static final String[] REQUIRED_PROPERTIES = {
+                key_appname,
+                key_app_class_name,
+                key_jar_libsdir,
+                key_jar_temp_dir_prefix,
+                key_cli_class_name,
+                key_cli_libs_filter,
+                key_cli_jar_name
+        };
 
         private final Properties props = new Properties();
         private final List<String> jpsArgs = new ArrayList<>();
@@ -109,28 +117,28 @@ public class ApplicationLauncher {
 
         String getAppname() {
             if (isCliMode()) {
-                return props.getProperty("appname") + " CLI";
+                return props.getProperty(key_appname) + " CLI";
             }
-            return props.getProperty("appname");
+            return props.getProperty(key_appname);
         }
 
         String getJarTempDirPrefix() {
             if (isCliMode()) {
-                return props.getProperty("jar.temp.dir.prefix") + "cli-";
+                return props.getProperty(key_jar_temp_dir_prefix) + "cli-";
             }
-            return props.getProperty("jar.temp.dir.prefix");
+            return props.getProperty(key_jar_temp_dir_prefix);
         }
 
         String getAppClassName() {
             if (isCliMode()) {
-                return props.getProperty("cli.class.name");
+                return props.getProperty(key_cli_class_name);
             }
-            return props.getProperty("app.class.name");
+            return props.getProperty(key_app_class_name);
         }
 
         Set<String> getLibsFilter() {
             if (isCliMode()) {
-                return Arrays.stream(props.getProperty("cli.libs.filter", "").split(","))
+                return Arrays.stream(props.getProperty(key_cli_libs_filter, "").split(","))
                         .map(String::trim)
                         .collect(Collectors.toSet());
             }
@@ -139,13 +147,13 @@ public class ApplicationLauncher {
 
         Set<String> getMandatoryJars() {
             if (isCliMode()) {
-                return Set.of(props.getProperty("cli.jar.name"));
+                return Set.of(props.getProperty(key_cli_jar_name));
             }
             return Collections.emptySet();
         }
 
         String getJarLibsDir() {
-            return props.getProperty("jar.libsdir");
+            return props.getProperty(key_jar_libsdir);
         }
 
         void checkRequiredProperties() {
