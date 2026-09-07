@@ -118,11 +118,9 @@ public class CliConsole {
                 return false;
             } else if (cmd.isHelp()) {
                 printLine("Available commands: cls, connect, disconnect, help, exit");
-            } else if (cmd.isConnect()) {
-                if (!serverConnection.connect(this::printResponseLine, this::notifyConnectionLost)) {
+            } else if (cmd.isConnect() && !serverConnection.connect(this::printResponseLine, this::notifyConnectionLost)) {
                     printLine("Connection failed, probably because no server is available.");
                 }
-            }
         }
 
         return continueRunning;
@@ -239,7 +237,7 @@ public class CliConsole {
         }
         try {
             String line = systemIn.readLine();
-            return line != null ? new PasswordWrapper(line.toCharArray()) : new PasswordWrapper(new char[0]);
+            return new PasswordWrapper(line != null ? line.toCharArray() : new char[0]);
         } finally {
             synchronized (outLock) {
                 systemOut.print(CONCEAL_OFF);

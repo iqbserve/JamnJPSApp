@@ -30,7 +30,6 @@ public class ServerConnection {
     // doesn't report it as a lost connection
     private volatile boolean manualDisconnect = false;
 
-    private Reader socketIn;
     private PrintWriter socketOut;
 
     public ServerConnection(CliConfig config) {
@@ -50,7 +49,7 @@ public class ServerConnection {
 
             socketOut = new PrintWriter(
                     new OutputStreamWriter(socket.getOutputStream(), encoding), true);
-            socketIn = new InputStreamReader(socket.getInputStream(), encoding);
+            Reader socketIn = new InputStreamReader(socket.getInputStream(), encoding);
 
             Thread readerThread = new Thread(() -> readServerOutput(socketIn, serverOutputConsumer, onConnectionLost),
                     "CliApp Server connection");
@@ -63,7 +62,7 @@ public class ServerConnection {
             connected.set(false);
             try {
                 socket.close();
-            } catch (IOException ignore) {
+            } catch (IOException _) {
                 // already failed to connect - nothing to do
             }
         }
@@ -107,7 +106,7 @@ public class ServerConnection {
                 line = new String(buffer, 0, read);
                 serverOutputConsumer.accept(line);
             }
-        } catch (IOException e) {
+        } catch (IOException _) {
             // socket was closed - nothing to do
         } finally {
             connected.set(false);
