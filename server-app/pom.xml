@@ -23,23 +23,24 @@
 	
 	<properties>
 		<jps.app.name>Jamn JPSApp</jps.app.name>
+		<author>Andreas Weidinger - IQB Services</author>
+		<authorUrl>https://iqbserve.de/</authorUrl>
 		<project.url>https://github.com/iqbserve/JamnJPSApp</project.url>
 		<jps.app.description><![CDATA[Jamn Personal Server app project. The JPSApp is a Java-SE based, experimental skeleton for building individual All-in-One apps and tools using a lightweight JSE based HTTP-capable Micro-Server.]]></jps.app.description>
 		<jps.app.version>${project.version}</jps.app.version>
 		<jps.launcher.class>iqb.jps.boot.ApplicationLauncher</jps.launcher.class>
 		<jps.app.class>iqb.jps.JPSApp</jps.app.class>
+		<jps.executable.libs.dir>modules</jps.executable.libs.dir>
+		<jps.executable.temp.dir.prefix>jpsapp-modules-</jps.executable.temp.dir.prefix>
+
+		<!-- CLI app properties-->
 		<jps.cli.class>iqb.jps.CliApp</jps.cli.class>
 		<!-- comma separated name tokens; only embedded module jars whose file name
 			contains one of these tokens are extracted when launched with -Djps.mode=cli.
 			The cli jar itself is always extracted regardless of this filter, see jps.cli.jar.name -->
-		<jps.cli.libs>jpsapp-core,slf4j-api,slf4j-jdk14,jackson-annotations,jackson-databind,jackson-core</jps.cli.libs>
+		<jps.cli.libs>jpsapp-core, slf4j-api, slf4j-jdk14, jackson-annotations, jackson-databind, jackson-core</jps.cli.libs>
 		<!-- fixed, version-stripped file name the cli jar is copied to (see app/pom.xml copy-cli-jar execution) -->
 		<jps.cli.jar.name>jpsapp-cli.jar</jps.cli.jar.name>
-		<jps.executable.libs.dir>modules</jps.executable.libs.dir>
-		<jps.executable.temp.dir.prefix>jpsapp-modules-</jps.executable.temp.dir.prefix>
-
-		<author>Andreas Weidinger - IQB Services</author>
-		<authorUrl>https://iqbserve.de/</authorUrl>
 
 		<maven.build.timestamp.format>dd-MM-yyyy HH:mm:ss</maven.build.timestamp.format>
 		<build.timestamp>${maven.build.timestamp}</build.timestamp>

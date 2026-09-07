@@ -18,10 +18,6 @@
 	<description>Core library for the JPSApp project</description>
 	<url>${parent.url}</url>
 
-	<properties>
-		<do.distribution>true</do.distribution>
-	</properties>
-
 	<dependencies>
 		<!-- SLF4J API -->
 		<dependency>

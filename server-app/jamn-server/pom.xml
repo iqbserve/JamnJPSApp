@@ -18,10 +18,6 @@
 	<description>Jamn server kernel</description>
 	<url>${parent.url}</url>
 
-	<properties>
-		<do.distribution>true</do.distribution>
-	</properties>
-
 	<dependencies>
 		<dependency>
 			<groupId>iqb.jps</groupId>

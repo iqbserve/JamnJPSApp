@@ -19,7 +19,7 @@
 	<url>${parent.url}</url>
 
 	<properties>
-		<do.distribution>true</do.distribution>
+		<distribute.extension>true</distribute.extension>
 	</properties>
 
 	<dependencies>
@@ -64,7 +64,7 @@
 					<execution>
 						<phase>install</phase>
 						<configuration>
-							<target if="${do.distribution}">
+							<target if="${distribute.extension}">
 								<copy file="target/${project.artifactId}-${project.version}.jar"
 									tofile="${jps.extensions.bin}/${project.artifactId}-${project.version}.jar" />
 							</target>
