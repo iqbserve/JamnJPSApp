@@ -30,15 +30,28 @@ public class ServerConnection {
     // doesn't report it as a lost connection
     private volatile boolean manualDisconnect = false;
 
+    private Consumer<String> serverOutputConsumer;
+    private Runnable onConnectionLost;
+
     private PrintWriter socketOut;
 
     public ServerConnection(CliConfig config) {
         this.config = config;
     }
 
+    public ServerConnection setServerOutputConsumer(Consumer<String> serverOutputConsumer) {
+        this.serverOutputConsumer = serverOutputConsumer;
+        return this;
+    }
+
+    public ServerConnection setOnConnectionLost(Runnable onConnectionLost) {
+        this.onConnectionLost = onConnectionLost;
+        return this;
+    }
+
     /**
      */
-    public boolean connect(Consumer<String> serverOutputConsumer, Runnable onConnectionLost) {
+    public boolean connect() {
         if (isConnected()) {
             return true;
         }

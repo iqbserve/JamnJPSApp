@@ -16,7 +16,10 @@ import java.util.function.BiFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import iqb.jps.core.HelperTool;
+import iqb.jps.cli.CliCmdCallContext;
+import iqb.jps.cli.CliCommand;
+import iqb.jps.cli.CliCommandLine;
+import iqb.jps.cli.CliCommandRegistry;
 
 /**
  * <pre>
@@ -27,8 +30,7 @@ import iqb.jps.core.HelperTool;
 public class CliInterface {
 
     private static Logger LOG = LoggerFactory.getLogger(CliInterface.class);
-    private static final HelperTool Tool = HelperTool.getInstance();
-    private static final CliCommandRegistry CmdRegistry = CliCommandRegistry.getInstance();
+    private CliCommandRegistry<CliCmdCallContext> registry = new CliCommandRegistry<CliCmdCallContext>();
 
     private int port = 9091;
     private ServerSocket serverSocket = null;
@@ -36,27 +38,12 @@ public class CliInterface {
     private Charset encoding = StandardCharsets.UTF_8;
     private String prompt = "jps> ";
 
-    private BiFunction<String, CliCmdCallContext, String> commandProcessor = (line, ctx) -> line;
-    /**
-     * The default command processor for the CLI interface.
-     */
-    public static final BiFunction<String, CliCmdCallContext, String> DefaultCommandProcessor = (cmdLine, ctx) -> {
-        String name = "";
-        String[] args = {};
-        String[] token = null;
-        if (cmdLine != null && !cmdLine.isBlank()) {
-            token = Tool.parseCommandLine(cmdLine);
-            if (token.length >= 1) {
-                name = token[0];
-            } else {
-                return "";
-            }
-            if (token.length >= 2) {
-                args = new String[token.length - 1];
-                System.arraycopy(token, 1, args, 0, args.length);
-            }
-            CliCommand cmd = CmdRegistry.getCommand(name);
-            return cmd.execute(args, ctx);
+    // provide a default implementation
+    private BiFunction<String, CliCmdCallContext, String> commandProcessor = (cmdLineSource, ctx) -> {
+        CliCommandLine cmdLine = new CliCommandLine(cmdLineSource);
+        if (cmdLine.isUseable()) {
+            CliCommand<CliCmdCallContext> cmd = registry.getCommand(cmdLine.getCommandName());
+            return cmd.execute(cmdLine.getArgs(), ctx);
         }
         return "";
     };
@@ -67,16 +54,15 @@ public class CliInterface {
         this.port = port;
     }
 
+    public CliInterface setCommandRegistry(CliCommandRegistry<CliCmdCallContext> registry) {
+        this.registry = registry;
+        return this;
+    }
+
     /**
      * <pre>
      * The command processor function is the concrete implementation of the command line string processing logic.
-     * something like:
-     * cliInterface.setCommandProcessor((line, ctx) -> {
-     *     // parse the command line input
-     *     String[] token = line.split(" ");
-     *     ...
-     *     return result;
-     * });
+     * See this default implementation for an example.
      * </pre>
      */
     public CliInterface setCommandProcessor(BiFunction<String, CliCmdCallContext, String> commandProcessor) {
@@ -157,7 +143,7 @@ public class CliInterface {
                             new InputStreamReader(socket.getInputStream(), encoding))) {
                 LOG.info("CLI Interface connected");
 
-                CliCmdCallContext ctx = new DefaultCallContext(in, out);
+                CliCmdCallContext ctx = new CliCmdCallContext(in, out);
                 out.println("Connected to Jamn JPSApp CLI!");
                 out.print(prompt);
                 out.flush();
@@ -166,11 +152,13 @@ public class CliInterface {
                 while ((line = in.readLine()) != null) {
                     line = line.trim();
                     if (!line.isBlank()) {
-                        if ("exit".equals(line)) {
-                            break;
-                        }
                         // call the provided command processor
-                        out.println(commandProcessor.apply(line, ctx));
+                        String result = commandProcessor.apply(line, ctx);
+                        if (CliCommand.exitCommand().getName().equals(result)) {
+                            break;
+                        } else {
+                            out.println(result);
+                        }
                     }
                     out.print(prompt);
                     out.flush();
@@ -180,112 +168,6 @@ public class CliInterface {
             } finally {
                 LOG.info("CLI Interface disconnected");
             }
-        }
-    }
-
-    /**
-     * An argument object passed to the command execution function.
-     */
-    public static interface CliCmdArgs {
-
-        public boolean hasArg(String name);
-
-        public String getArgValue(String name);
-    }
-
-    /**
-     * A context object passed to the command execution function, providing handling
-     * functions.
-     */
-    public static interface CliCmdCallContext {
-
-        public String queryInput(String prompt);
-    }
-
-    /**
-     * A command object implementation providing a unique name and execution
-     * function.
-     */
-    public static class CliCommand {
-
-        public static final CliCommand UnknownCommand = new CliCommand("Unknown", (args, ctx) -> "Unknown command");
-
-        private String name;
-        private BiFunction<CliCmdArgs, CliCmdCallContext, String> commandFunction;
-
-        public CliCommand(String name, BiFunction<CliCmdArgs, CliCmdCallContext, String> commandFunction) {
-            this.name = name;
-            this.commandFunction = commandFunction;
-        }
-
-        /**
-         */
-        public String execute(String[] args, CliCmdCallContext context) {
-            return commandFunction.apply(new DefaultCliArgs(args), context);
-        }
-
-        /**
-         */
-        public String getName() {
-            return name;
-        }
-    }
-
-    /**
-     * A default implementation of the command call context
-     */
-    private static class DefaultCallContext implements CliCmdCallContext {
-        private BufferedReader in;
-        private PrintWriter out;
-
-        DefaultCallContext(BufferedReader in, PrintWriter out) {
-            this.in = in;
-            this.out = out;
-        }
-
-        @Override
-        public String queryInput(String prompt) {
-            out.print(prompt + ": ");
-            out.flush();
-            try {
-                return in.readLine().trim();
-            } catch (Exception _) {
-                return "";
-            }
-        }
-    }
-
-    /**
-     * A default implementation of the command arguments object.
-     */
-    private static class DefaultCliArgs implements CliCmdArgs {
-
-        private String[] args;
-
-        public DefaultCliArgs(String[] args) {
-            this.args = args;
-        }
-
-        @Override
-        public boolean hasArg(String name) {
-            String propName = name + "=";
-            for (String arg : args) {
-                if (arg.equals(name) || arg.startsWith(propName)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        @Override
-        public String getArgValue(String name) {
-            String propName = name + "=";
-            for (String arg : args) {
-                if (arg.startsWith(propName)) {
-                    return arg.substring(propName.length());
-                }
-            }
-            return null;
         }
     }
 }

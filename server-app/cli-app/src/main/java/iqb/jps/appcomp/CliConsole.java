@@ -4,15 +4,17 @@ package iqb.jps.appcomp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import iqb.jps.cli.CliCommand;
+import iqb.jps.cli.CliCommandLine;
+import iqb.jps.cli.CliCommandRegistry;
+import iqb.jps.core.PasswordObject;
+
 import java.io.BufferedReader;
 import java.io.Console;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -26,8 +28,6 @@ import java.util.function.Supplier;
 public class CliConsole {
 
     private static final Logger LOG = LoggerFactory.getLogger(CliConsole.class);
-
-    private static final String CLEAR_SCREEN = "\u001b[H\u001b[2J\u001b[3J";
 
     // ANSI: make font invisible / restore visibility - used to hide password input
     // over plain System.in when no real System.console() is attached
@@ -54,15 +54,19 @@ public class CliConsole {
     private PrintStream systemOut;
     private final ServerConnection serverConnection;
     private Supplier<String> prompt = () -> "> ";
+    private final CliCommandRegistry<CmdCallContext> commandRegistry;
 
     // guards all writes to systemOut so local prompt/messages and async
     // server responses (from the ServerConnection reader thread) never interleave
     private final Object outLock = new Object();
 
-    public CliConsole(ServerConnection serverConnection) {
+    public CliConsole(ServerConnection serverConnection, CliCommandRegistry<CmdCallContext> commandRegistry) {
         this.encoding = resolveConsoleCharset();
         this.systemOut = System.out;
-        this.serverConnection = serverConnection;
+        this.commandRegistry = commandRegistry;
+        this.serverConnection = serverConnection
+                .setServerOutputConsumer(this::printResponseLine)
+                .setOnConnectionLost(this::notifyConnectionLost);
     }
 
     /**
@@ -81,49 +85,45 @@ public class CliConsole {
         readPassword("Please enter password: ");
         printLine("Console ready. Type 'help' for available commands.");
 
+        CmdCallContext ctx = new CmdCallContext(serverConnection);
+
         isOpen = true;
         while ((line = readNextLine()) != null) {
             line = line.trim();
-            if (!processCommandLine(line)) {
+
+            String result = processCommandLine(line, ctx);
+            // break the loop for exit
+            if (CliCommand.exitCommand().getName().equals(result)) {
+                printLine("Closing console.");
                 break;
+            } else if (result != null) {
+                printLine(result);
             }
         }
     }
 
     /**
      */
-    private boolean processCommandLine(String line) {
-        boolean continueRunning = true;
+    private String processCommandLine(String line, CmdCallContext ctx) {
 
-        Command cmd = new Command(line);
-
-        if (cmd.isCls()) {
-            clearScreen();
-            if (isConnected()) {
-                serverConnection.send("");
-            }
-            return continueRunning;
-        }
-
+        CliCommandLine cmdLine = new CliCommandLine(line);
+        CliCommand<CmdCallContext> cliCmd = null;
         if (isConnected()) {
-            if (cmd.isDisconnect() || cmd.isExit()) {
-                serverConnection.disconnect();
-                printLine("Disconnected from the server.");
+            if(cmdLine.isCommand("cls")) {
+                //doing an explicite clear screen if connected
+                cliCmd = commandRegistry.getCommand(cmdLine.getCommandName());
+                printLine(cliCmd.execute(cmdLine.getArgs(), ctx));
+                serverConnection.send("");
             } else {
                 serverConnection.send(line);
             }
         } else {
-            if (cmd.isExit()) {
-                printLine("Closing console.");
-                return false;
-            } else if (cmd.isHelp()) {
-                printLine("Available commands: cls, connect, disconnect, help, exit");
-            } else if (cmd.isConnect() && !serverConnection.connect(this::printResponseLine, this::notifyConnectionLost)) {
-                    printLine("Connection failed, probably because no server is available.");
-                }
+            if (cmdLine.isUseable()) {
+                cliCmd = commandRegistry.getCommand(cmdLine.getCommandName());
+                return cliCmd.execute(cmdLine.getArgs(), ctx);
+            }
         }
-
-        return continueRunning;
+        return null;
     }
 
     /**
@@ -171,15 +171,6 @@ public class CliConsole {
     }
 
     /**
-     */
-    private void clearScreen() {
-        synchronized (outLock) {
-            systemOut.print(CLEAR_SCREEN);
-            systemOut.flush();
-        }
-    }
-
-    /**
      * The local console output method.
      */
     private void printLine(String line) {
@@ -206,7 +197,7 @@ public class CliConsole {
      * via a local disconnect/exit).
      */
     private void notifyConnectionLost() {
-        printLine("Connection to server lost.");
+        printLine("Connection to server terminated.");
         printPrompt();
     }
 
@@ -224,10 +215,10 @@ public class CliConsole {
      * 
      * </pre>
      */
-    public PasswordWrapper readPassword(String promptText) throws IOException {
+    public PasswordObject readPassword(String promptText) throws IOException {
         Console console = System.console();
         if (console != null) {
-            return new PasswordWrapper(console.readPassword("%s", promptText));
+            return new PasswordObject(console.readPassword("%s", promptText));
         }
 
         synchronized (outLock) {
@@ -235,77 +226,13 @@ public class CliConsole {
             systemOut.print(CONCEAL_ON);
             systemOut.flush();
         }
-        try {
+        try { // NOSONAR explicit no try with resources
             String line = systemIn.readLine();
-            return new PasswordWrapper(line != null ? line.toCharArray() : new char[0]);
+            return new PasswordObject(line != null ? line.toCharArray() : new char[0]);
         } finally {
             synchronized (outLock) {
                 systemOut.print(CONCEAL_OFF);
                 systemOut.flush();
-            }
-        }
-    }
-
-    /**
-     * Represents a command entered by the user.
-     */
-    protected static class Command {
-
-        private final String token;
-
-        public Command(String token) {
-            this.token = token;
-        }
-
-        public boolean isCls() {
-            return token.equalsIgnoreCase("cls");
-        }
-
-        public boolean isExit() {
-            return token.equalsIgnoreCase("exit");
-        }
-
-        public boolean isConnect() {
-            return token.equalsIgnoreCase("connect");
-        }
-
-        public boolean isDisconnect() {
-            return token.equalsIgnoreCase("disconnect");
-        }
-
-        public boolean isHelp() {
-            return token.equalsIgnoreCase("help");
-        }
-    }
-
-    /**
-     * A quite safe password for a quite unsafe environment ;-).
-     */
-    protected static final class PasswordWrapper implements AutoCloseable {
-        private final AtomicReference<char[]> valueRef;
-
-        public PasswordWrapper(char[] input) {
-            this.valueRef = new AtomicReference<>(input.clone());
-            Arrays.fill(input, '\0');
-        }
-
-        public void oneTimeApplyTo(Consumer<char[]> consumer) {
-            char[] chars = valueRef.get();
-            if (chars == null) {
-                throw new IllegalStateException("Password has already been cleared.");
-            }
-            try {
-                consumer.accept(chars);
-            } finally {
-                close();
-            }
-        }
-
-        @Override
-        public void close() {
-            char[] chars = valueRef.getAndSet(null);
-            if (chars != null) {
-                Arrays.fill(chars, '\0');
             }
         }
     }

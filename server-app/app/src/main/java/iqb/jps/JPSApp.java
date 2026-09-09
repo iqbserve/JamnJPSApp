@@ -17,8 +17,6 @@ import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.LogManager;
-import java.util.stream.Collectors;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,9 +27,10 @@ import iqb.jps.appcomp.JavaScriptProvider;
 import iqb.jps.appcomp.OperatingSystemInterface;
 import iqb.jps.appcomp.WebAppConfigurator;
 import iqb.jps.boot.ApplicationLauncher;
+import iqb.jps.cli.CliCmdCallContext;
+import iqb.jps.cli.CliCommand;
+import iqb.jps.cli.CliCommandRegistry;
 import iqb.jps.cliapi.CliInterface;
-import iqb.jps.cliapi.CliInterface.CliCommand;
-import iqb.jps.cliapi.CliCommandRegistry;
 import iqb.jps.core.AppConfig;
 import iqb.jps.core.HelperTool;
 import iqb.jps.core.JsonTool;
@@ -88,6 +87,9 @@ public class JPSApp {
 
     private CliInterface cliInterface = null;
     private Optional<JavaScriptProvider> javaScript = Optional.empty();
+
+    private CliCommandRegistry<CliCmdCallContext> commandRegistry = null;
+
 
     /**
      */
@@ -358,9 +360,12 @@ public class JPSApp {
      */
     private void initCliInterface() {
         if (appConfig.isCliInterfaceEnabled()) {
+            commandRegistry = new CliCommandRegistry<CliCmdCallContext>();
+        
             cliInterface = new CliInterface(appConfig.getCliInterfacePort())
-                    .setEncoding(this.standardEncoding)
-                    .setCommandProcessor(CliInterface.DefaultCommandProcessor);
+                    .setCommandRegistry(commandRegistry)
+                    .setEncoding(this.standardEncoding);
+            
             try {
                 cliInterface.start();
             } catch (IOException e) {
@@ -477,11 +482,13 @@ public class JPSApp {
      */
     private void createCliCommands() {
         if (appConfig.isCliInterfaceEnabled()) {
-            CliCommandRegistry registry = CliCommandRegistry.getInstance();
             String ls = System.lineSeparator();
 
+            // exit cli
+            commandRegistry.addCommand(new CliCommand<CliCmdCallContext>("exit", (cmdArgs, ctx) -> "exit"));
+
             // shutdown the application
-            registry.addCommand(new CliCommand("shutdown", (cmdArgs, ctx) -> {
+            commandRegistry.addCommand(new CliCommand<CliCmdCallContext>("shutdown", (cmdArgs, ctx) -> {
                 if ("YES".equals(ctx.queryInput("Confirm shutdown (YES)"))) {
                     shutdown();
                     return SHUTDOWN_TEXT;
@@ -489,31 +496,35 @@ public class JPSApp {
                 return "Shutdown cancelled";
             }));
 
-            // list config infos
-            registry.addCommand(new CliCommand("list", (cmdArgs, ctx) -> {
+            // list infos
+            commandRegistry.addCommand(new CliCommand<CliCmdCallContext>("list", (cmdArgs, ctx) -> {
                 if (cmdArgs.hasArg("config")) {
-                    return Tool.toMap(appConfig.getProperties())
-                            .entrySet()
-                            .stream()
-                            .sorted(Map.Entry.comparingByKey())
-                            .map(e -> e.getKey() + "=" + e.getValue())
-                            .collect(Collectors.joining(ls));
+                    return Tool.mapToString(Tool.toMap(appConfig.getProperties()), ls);
                 } else if (cmdArgs.hasArg("props")) {
-                    return Tool.toMap(System.getProperties())
-                            .entrySet()
-                            .stream()
-                            .sorted(Map.Entry.comparingByKey())
-                            .map(e -> e.getKey() + "=" + e.getValue())
-                            .collect(Collectors.joining(ls));
+                    return Tool.mapToString(Tool.toMap(System.getProperties()), ls);
                 } else if (cmdArgs.hasArg("webservice")) {
                     return new StringBuffer()
                             .append(String.join(ls, getWebServiceProvider().getAllServicePathNames()))
                             .toString();
+                } else if (cmdArgs.hasArg("extensions")) {
+                    return new StringBuffer()
+                            .append(String.join(ls, getExtensionHandler().getRegisteredExtensionNames()))
+                            .toString();
+                }else if (cmdArgs.hasArg("buildprops")) {
+                    return  Tool.mapToString(Tool.toMap(buildProperties), ls);
                 }
 
-                return "use arg [config | props | webservice]";
+                return "use arg [config | props | webservice | extensions | buildprops]";
+            }));
+
+            // test echo function
+            commandRegistry.addCommand(new CliCommand<CliCmdCallContext>("echotest", (cmdArgs, ctx) -> {
+                String[] args = cmdArgs.getArgsArray();
+                if (args.length > 0) {
+                    return String.join(ls, args);
+                }
+                return "No input";
             }));
         }
     }
-
 }

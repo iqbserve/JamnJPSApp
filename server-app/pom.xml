@@ -20,7 +20,7 @@
 	<name>JPSApp Server Project</name>
 	<description>${jps.app.description}</description>
 	<url>${project.url}</url>
-	
+
 	<properties>
 		<jps.app.name>Jamn JPSApp</jps.app.name>
 		<author>Andreas Weidinger - IQB Services</author>
@@ -35,11 +35,14 @@
 
 		<!-- CLI app properties-->
 		<jps.cli.class>iqb.jps.CliApp</jps.cli.class>
-		<!-- comma separated name tokens; only embedded module jars whose file name
-			contains one of these tokens are extracted when launched with -Djps.mode=cli.
-			The cli jar itself is always extracted regardless of this filter, see jps.cli.jar.name -->
-		<jps.cli.libs>jpsapp-core, slf4j-api, slf4j-jdk14, jackson-annotations, jackson-databind, jackson-core</jps.cli.libs>
-		<!-- fixed, version-stripped file name the cli jar is copied to (see app/pom.xml copy-cli-jar execution) -->
+		<!-- 
+		comma separated key names of CLI required libraries
+		the classpath of the cli app will include all libraries whose names contain a filter key
+		 -->
+		<jps.cli.libs>jpsapp-core, slf4j-api, slf4j-jdk14</jps.cli.libs>
+		<!-- for IDE classpath - fixed, version-stripped file name the cli jar is copied to
+		 (see app/pom.xml copy-cli-jar execution)
+		-->
 		<jps.cli.jar.name>jpsapp-cli.jar</jps.cli.jar.name>
 
 		<maven.build.timestamp.format>dd-MM-yyyy HH:mm:ss</maven.build.timestamp.format>
