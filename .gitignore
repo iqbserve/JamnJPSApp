@@ -42,7 +42,7 @@
 
 !/JamnJPSApp.code-workspace
 !/server-app/app/src/main/resources/app.logging.properties
-!/server-app/app/user-http/**
+#!/server-app/app/user-http/**
 !/run.cmd
 !/runcli.cmd
 
