@@ -18,7 +18,7 @@ export type WsoMessageListener = (wsoMsg: WsoCommonMessage) => void;
 export class WebSocketConnection {
 
     #props: PropertiesObject;
-    #socket: WebSocket;
+    #socket: WebSocket | null = null;
     #listener: { [key: string]: WsoMessageListener[] };
 
     constructor(props: PropertiesObject) {
@@ -50,7 +50,7 @@ export class WebSocketConnection {
                 Logger.info("WebSocket connection [closed]");
             };
 
-            this.#socket.onerror = () => {
+            this.#socket.onerror = (event: Event) => {
                 this.#socket = null;
                 Logger.error("WebSocket connection error");
                 this.#onMessage(event);
@@ -61,7 +61,7 @@ export class WebSocketConnection {
 
     close() {
         if (this.isConnected()) {
-            this.#socket.close();
+            this.#socket?.close();
             this.#socket = null;
         }
     }
@@ -69,11 +69,11 @@ export class WebSocketConnection {
     /**
      * Expects WsoCommonMessage objects
      */
-    sendMessage(wsoMsg: WsoCommonMessage, afterSentCb: () => void = null) {
+    sendMessage(wsoMsg: WsoCommonMessage, afterSentCb: (() => void) | null = null) {
         if (wsoMsg instanceof WsoCommonMessage) {
             if (this.isConnected()) {
                 const msg = this.#createWsoMessageString(wsoMsg);
-                this.#socket.send(msg);
+                this.#socket?.send(msg);
                 if (afterSentCb) { afterSentCb(); }
                 return true;
             } else {

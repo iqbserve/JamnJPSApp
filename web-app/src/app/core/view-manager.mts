@@ -4,7 +4,7 @@ import { WorkView, StandardDialog } from 'core/view-classes.mjs';
 import { DialogMessage } from 'types/commons';
 
 /* Types */
-type ViewEntry = { view: WorkView, cart: HTMLElement }
+type ViewEntry = { view: WorkView, cart: HTMLElement | null }
 
 /**
  * <pre>
@@ -50,7 +50,7 @@ export class WorkbenchViewManager {
 		}
 	}
 
-	#resolveViewRegistration(view, cb) {
+	#resolveViewRegistration(view: WorkView, cb: (viewEntry: ViewEntry) => void) {
 		let viewEntry = this.#registeredViews[view.id];
 		if (viewEntry) {
 			cb(viewEntry);
@@ -78,22 +78,23 @@ export class WorkbenchViewManager {
 	}
 
 	//the container dom element used by the view manager
-	#createViewCartridge(viewId, viewElement) {
+	#createViewCartridge(viewId: string, viewElement: HTMLElement) {
 		const viewCart = document.createElement("div");
 		viewCart.id = "view.cartridge." + viewId;
-		viewCart.style = "visibility: visible; display: block;"
+		viewCart.style.cssText = "visibility: visible; display: block;"
 		viewCart.appendChild(viewElement);
 
-		this.#registeredViews[viewId].cart = viewCart;
+		(this.#registeredViews[viewId] as ViewEntry).cart = viewCart;
 		return viewCart;
 	}
 
-	#setViewCartVisible(viewCart, flag) {
+	#setViewCartVisible(viewCart: HTMLElement | null, flag: boolean) {
+		if (!viewCart) { return; }
 		if (flag) {
-			viewCart.style["display"] = "block";
-			viewCart.style["visibility"] = "visible";
+			viewCart.style.setProperty("display", "block");
+			viewCart.style.setProperty("visibility", "visible");
 		} else if (this.#workarea.children.length > 0) {
-			viewCart.style["display"] = "none";
+			viewCart.style.setProperty("display", "none");
 		}
 	}
 
@@ -123,7 +124,7 @@ export class WorkbenchViewManager {
 	stepViewsDown() {
 		const children = this.#getVisibleChildren();
 		if (children.length > 1) {
-			this.#workarea.insertBefore(children.at(-1), children[0]);
+			this.#workarea.insertBefore(children.at(-1) as HTMLElement, children[0]);
 			this.#scrollToTop();
 		}
 	}
@@ -139,6 +140,7 @@ export class WorkbenchViewManager {
 	moveView(view: WorkView, position: string) {
 		const elemCount = this.#workarea.children.length;
 		const viewCart = this.#registeredViews[view.id].cart;
+		if (!viewCart) { return; }
 
 		if (Number.isNaN(Number.parseInt(position))) {
 			let idx: number;
