@@ -250,7 +250,7 @@ class SystemInfoView extends WorkView {
 			});
 
 			onKeyup(this.configTable.getHeader(0).getElementsByTagName("input")[0], (evt) => {
-				this.configTable.filterRows(0, evt.target.value);
+				this.configTable.filterRows(0, (evt.target as HTMLInputElement).value);
 			});
 			this.needsViewDataRefresh = false;
 		}

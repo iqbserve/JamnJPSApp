@@ -8,15 +8,15 @@
  * PUBLIC
  */
 export function getIconClasses(name: string): string[] {
-	return iconClasses[name][0];
+	return (iconClasses as Record<string, ReturnType<typeof createClassDef>>)[name][0] as string[];
 }
 
 export function getIconShapeClasses(name: string): string[] {
-	return iconClasses[name][1];
+	return (iconClasses as Record<string, ReturnType<typeof createClassDef>>)[name][1] as string[];
 }
 
 export function getIconClassString(name: string): string {
-	return iconClasses[name][0].join(" ");
+	return (iconClasses as Record<string, ReturnType<typeof createClassDef>>)[name][0].join(" ");
 }
 
 /**
@@ -68,8 +68,18 @@ export const gi_toggleExpand = newConstantFunction("gi_toggleExpand");
 /**
  * INTERNALS
  */
-function newConstantFunction(name: string) {
-	return (opt = null) => {
+/**
+ * A constant icon function: called without args (or with "class") returns the icon name/class-string,
+ * called with "classes" returns the individual css classes.
+ */
+export type IconFn = {
+	(opt?: null): string;
+	(opt: "classes"): string[];
+	(opt: "class"): string;
+};
+
+function newConstantFunction(name: string): IconFn {
+	const fn = (opt: "classes" | "class" | null = null) => {
 		if (!opt) {
 			return name;
 		} else if (opt === "classes") {
@@ -79,6 +89,7 @@ function newConstantFunction(name: string) {
 		}
 		return name;
 	};
+	return fn as IconFn;
 }
 
 /**

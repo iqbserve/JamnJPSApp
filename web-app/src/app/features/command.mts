@@ -149,7 +149,7 @@ export class CommandView extends WorkView {
 					.attrib({ placeholder: taPlaceholder, disabled: !this.commandDef.options.args });
 				onKeydown(textarea, (evt) => {
 					if (this.commandDef.options.args) {
-						if (KEY.isEnter(evt) && evt.currentTarget.value.trim() === "-h") {
+						if (KEY.isEnter(evt) && (evt.currentTarget as HTMLTextAreaElement).value.trim() === "-h") {
 							this.runCommand();
 						}
 					}

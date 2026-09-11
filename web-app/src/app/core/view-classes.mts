@@ -1390,8 +1390,8 @@ export class AttachmentHandler {
 
 		this.listElem.appendChild(item);
 
-		onClicked(item.firstElementChild, (evt) => {
-			const name = evt.target.parentElement.lastElementChild.textContent;
+		onClicked(item.firstElementChild as HTMLElement, (evt) => {
+			const name = (evt.target as HTMLElement).parentElement?.lastElementChild?.textContent ?? "";
 			this.removeDataFromList(name, item);
 		});
 	}

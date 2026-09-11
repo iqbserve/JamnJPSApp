@@ -154,7 +154,7 @@ export class WbSidebar extends HTMLElement {
                         .addTextField({ clazzes: "embedded-search-field" }, (searchField) => {
                             searchField.style({ width: "50%", "max-width": "150px" }).attrib({ placeholder: "Filter ..." });
                             onKeyup(searchField, (evt) => {
-                                this.#filterItems(evt.target.value);
+                                this.#filterItems((evt.target as HTMLInputElement).value);
                             })
                         });
                 })
@@ -206,12 +206,13 @@ export class WbSidebar extends HTMLElement {
                 <span class="sbar-topic-text node-trigger">${text}</span>
             </span>
         </li>`;
-        const elem = UIBuilder.createDomElementFrom(html);
+        const elem = UIBuilder.createDomElementFrom(html) as HTMLElement;
 
         onClicked(elem, (evt) => {
             //prevent collapsing topic
-            if (evt.target.classList.contains("node-trigger")) {
-                const list = evt.currentTarget.lastChild;
+            const target = evt.target as HTMLElement;
+            if (target.classList.contains("node-trigger")) {
+                const list = (evt.currentTarget as HTMLElement).lastChild as HTMLElement | null;
                 if (list) {
                     if (list.style.display == "none" || list.style.display == "") {
                         list.style.display = "block";

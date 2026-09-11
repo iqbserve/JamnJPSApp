@@ -306,7 +306,7 @@ function createIntroBox() {
 	};
 
 	onClicked(intro, (evt) => {
-		setDisplay(evt.currentTarget, false);
+		setDisplay(evt.currentTarget as HTMLElement, false);
 	});
 
 	document.getElementById("app-intro-content").innerHTML = `
