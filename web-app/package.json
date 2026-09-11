@@ -12,6 +12,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc -p tsconfig.check.json",
     "lint": "npx eslint",
     "cp": "node copy-assets.mjs cp"
   }

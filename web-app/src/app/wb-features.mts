@@ -2,7 +2,7 @@
 
 import { Logger } from 'core/logging.mjs';
 import { WorkView } from 'core/view-classes.mjs';
-import { LazyFunction, typeUtil } from 'core/tools.mjs';
+import { typeUtil } from 'core/tools.mjs';
 import { WorkbenchViewManager } from 'core/view-manager.mjs';
 import { WbProperties } from 'config/wbapp-properties.mjs';
 
@@ -24,6 +24,10 @@ const applicationFeatures: Record<string, DynamicFunction> = {};
 const extensionSidebarItems: ExtensionSBarItemDef[] = [];
 
 /**
+ * <pre>
+ * Initializes the extension features by importing the interface module (wb-extension-features.mts)
+ * and calling its customization function.
+ * </pre>
  */
 export function initExtensionFeatures(config: WbAppConfig, cb: () => void) {
     let moduleName = "/app/" + WbProperties.extensionFeaturesModule();
@@ -57,13 +61,13 @@ export function addFeature(name: string, feature: DynamicFunction, sideBarItemDe
 export function callFeature(name: string, viewManager: WorkbenchViewManager) {
     if (applicationFeatures[name]) {
         const feature = applicationFeatures[name];
-        feature.invoke((retObj: WorkView | (() => void) | null) => {
-            if (retObj instanceof WorkView) {
-                viewManager.openView(retObj);
-            } else if (typeUtil.isFunction(retObj)) {
-                retObj();
+        feature.invoke((retValArg: unknown) => {
+            if (retValArg instanceof WorkView) {
+                viewManager.openView(retValArg);
+            } else if (typeUtil.isFunction(retValArg)) {
+                (retValArg as () => void)();
             } else {
-                Logger.warn(`Call to feature [${name}] returned unexpected value [${retObj}]`)
+                Logger.warn(`Call to feature [${name}] returned unexpected value [${retValArg}]`)
             }
         });
     } else {

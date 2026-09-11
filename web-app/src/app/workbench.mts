@@ -29,7 +29,7 @@ registerUIWebComponents();
 let appConfig: WbAppConfig;
 let systemInfo: PropertiesObject = {};
 
-let rootElement: HTMLElement;
+let rootElement: HTMLElement | null;
 
 let titlebar: WbTitlebar;
 let sidebar: WbSidebar;
@@ -63,7 +63,7 @@ export const WorkbenchInterface = Object.freeze({
 		viewManager.promptConfirmation(msg, cb);
 	},
 
-	sendWsoMessage: (wsoMsg: WsoCommonMessage, afterSentCb: () => void = null) => {
+	sendWsoMessage: (wsoMsg: WsoCommonMessage, afterSentCb?: () => void) => {
 		return webSocket.sendMessage(wsoMsg, afterSentCb);
 	},
 

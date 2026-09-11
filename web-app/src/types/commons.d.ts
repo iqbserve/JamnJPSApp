@@ -34,7 +34,10 @@ export type ESModule = Record<"default", unknown>;
 export type FncArgs = Record<number, unknown>;
 
 /**
- * Dynamic function methods expect a callback receiving the result of the invocation.
+ * <pre>
+ * Dynamic function invocation method expect a callback function with a parameter
+ * that is the result of the dynamic function invocation.
+ * </pre>
  * @see LazyFunction
  */
 export interface DynamicFunction {
