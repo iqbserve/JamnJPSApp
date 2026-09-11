@@ -747,11 +747,11 @@ export class ViewDialog extends AbstractView {
 		return this.dialog().open;
 	}
 
-	open(cb: ((dlg: this) => void) | null) {
+	open(cb: ((dlg: this) => void) | null = null) {
 		this.#open(cb, false);
 	}
 
-	openModal(cb: ((dlg: this) => void) | null) {
+	openModal(cb: ((dlg: this) => void) | null = null) {
 		this.#open(cb, true);
 	}
 

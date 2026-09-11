@@ -4,6 +4,7 @@ import { Logger } from 'core/logging.mjs';
 import { NL, newSimpleId, FileDataReader, BackendServerUrl, OriginServerUrl } from 'core/tools.mjs';
 import { WorkView, ViewDialog, SplitBarHandler, AttachmentHandler } from 'core/view-classes.mjs';
 import { UIBuilder, onClicked, onChange } from 'core/uibuilder.mjs';
+import type { UIComp } from 'core/uibuilder.mjs';
 import { WorkViewHtml } from 'core/view-templates.mjs';
 import * as Webapi from 'app/core/webapi.mjs';
 import * as Icons from 'core/icons.mjs';
@@ -15,11 +16,25 @@ import { DataFile } from 'app/core/data-classes.mjs';
 /* Types */
 import type { JSObject } from 'types/commons';
 
-function playgroundUrl(dest) {
+function playgroundUrl(dest: string) {
 	return BackendServerUrl(`/vres/playground/${dest}`);
 }
 
-const CodeEditor = {
+//minimal shape for the parts of the dynamically-loaded Monaco editor instance that are used here
+interface MonacoEditorLike {
+	addCommand(keybinding: number, handler: () => void): void;
+	trigger(source: string, handlerId: string, payload: unknown): void;
+	setValue(value: string): void;
+	getValue(): string;
+}
+
+const CodeEditor: {
+	instance: MonacoEditorLike | null;
+	defaultLanguage: string;
+	theme: string;
+	languageConfigs: Record<string, { comments: { lineComment: string, blockComment: string[] } }>;
+	keyBindings: { key: (keymod: unknown, keycode: unknown) => number, command: string }[];
+} = {
 	instance: null,
 
 	defaultLanguage: "javascript",
@@ -43,29 +58,29 @@ const CodeEditor = {
  */
 class PlaygroundView extends WorkView {
 
-	refId: string;
+	refId!: string;
 
-	scriptFileReader: FileDataReader;
-	attachmentFileReader: FileDataReader;
-	attachmentHandler: AttachmentHandler;
+	scriptFileReader!: FileDataReader;
+	attachmentFileReader!: FileDataReader;
+	attachmentHandler!: AttachmentHandler;
 
-	scriptDataFile;
-	lastRequest;
+	scriptDataFile: DataFile | null = null;
+	lastRequest: PlaygroundRequest | null = null;
 
 	//member objects to collect ui elements and ui objects from the builder
 	elem: JSObject = {};
 	uiobj: JSObject = {};
 
 	//side panel 
-	spMainPanel: HTMLElement;
-	spDataPanel: HTMLElement;
+	spMainPanel!: HTMLElement;
+	spDataPanel!: HTMLElement;
 
-	styles;
+	styles!: { taFontSize: string };
 
-	previewDialog;
-	iconPreview;
+	previewDialog!: PreviewDialog;
+	iconPreview?: HTMLElement;
 
-	constructor(id) {
+	constructor(id: string) {
 		super(id, null);
 		this.viewSource.setHtml(WorkViewHtml());
 	}
@@ -99,11 +114,11 @@ class PlaygroundView extends WorkView {
 		this.setVisible(true);
 
 		this.previewDialog = new PreviewDialog(this.viewElement);
-		this.previewDialog.listener.push((dlg) => { this.onPreview(dlg) });
+		this.previewDialog.listener.push((dlg: ViewDialog) => { this.onPreview(dlg) });
 
 	}
 
-	setTitle(titleInfo) {
+	setTitle(titleInfo: string) {
 		const title = `JavaScript Playground - [ ${titleInfo} ]`;
 		super.setTitle(title);
 	}
@@ -140,7 +155,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createWorkareaLayout(builder, comps) {
+	createWorkareaLayout(builder: UIBuilder, comps: JSObject) {
 		builder.newUICompFor(this.viewWorkarea)
 			.addColContainer({ elemType: "div", clazzes: ["flex-one"] }, (waMain) => {
 				waMain.style({ height: "100%", gap: "10px" })
@@ -150,7 +165,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createEditorOptionsComp(builder, target) {
+	createEditorOptionsComp(builder: UIBuilder, target: UIComp) {
 		builder.newUIComp()
 			.addLabel({ elemType: "labelText", text: "Options:" })
 			.addGroup({}, (group) => {
@@ -185,7 +200,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createEditorRunComp(builder, target) {
+	createEditorRunComp(builder: UIBuilder, target: UIComp) {
 		builder.newUIComp()
 			.addLabelButton({ text: "Run:" },
 				{ varid: "pbRun", iconName: Icons.run(), text: "editor code", title: "Run script code" }, (label, pbRun) => {
@@ -221,12 +236,12 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createEditorComp(builder, target) {
+	createEditorComp(builder: UIBuilder, target: UIComp) {
 
 		this.createEditorOptionsComp(builder, target);
 		this.createEditorRunComp(builder, target);
 
-		let splitterElem;
+		let splitterElem!: HTMLElement;
 
 		builder.newUIComp()
 			.style({ "align-items": "flex-start", width: "100%" })
@@ -249,7 +264,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createEditor(editorContainer) {
+	createEditor(editorContainer: HTMLElement) {
 		const stopRunningMode = () => { this.setRunning(false); this.setDisabled(false); this.setTitle(""); };
 		this.setTitle("Loading external Editor ...");
 		this.setRunning(true);
@@ -283,11 +298,14 @@ class PlaygroundView extends WorkView {
 				});
 
 				// create user key bindings
-				CodeEditor.keyBindings.forEach((binding) => {
-					CodeEditor.instance.addCommand(binding.key(monacoObj.KeyMod, monacoObj.KeyCode), () => {
-						CodeEditor.instance.trigger('editor', binding.command, null);
+				const editor = CodeEditor.instance;
+				if (editor) {
+					CodeEditor.keyBindings.forEach((binding) => {
+						editor.addCommand(binding.key(monacoObj.KeyMod, monacoObj.KeyCode), () => {
+							editor.trigger('editor', binding.command, null);
+						});
 					});
-				});
+				}
 			} catch (e) {
 				Logger.error(e);
 			} finally {
@@ -299,7 +317,7 @@ class PlaygroundView extends WorkView {
 	/**
 	 * Start building Sidepanel
 	 */
-	createSidePanel(builder) {
+	createSidePanel(builder: UIBuilder) {
 		this.installSidePanel(null).setWidth("350px");
 		//show it opened
 		this.toggleSidePanel();
@@ -310,12 +328,12 @@ class PlaygroundView extends WorkView {
 
 		this.createSPDataPanel(builder);
 
-		this.sidePanel.setViewComp(this.spMainPanel);
+		this.sidePanel?.setViewComp(this.spMainPanel);
 	}
 
 	/**
 	 */
-	createSPanelMainLayout(builder, comps) {
+	createSPanelMainLayout(builder: UIBuilder, comps: JSObject) {
 		const panelComp = builder.newUIComp("blankComp").class(["col-comp"]).attrib({ name: "sidePanelMain" });
 
 		this.spMainPanel = panelComp
@@ -328,7 +346,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createSPanelHeadComp(builder, target) {
+	createSPanelHeadComp(builder: UIBuilder, target: UIComp) {
 		builder.newUICompFor(target.domElem)
 			.addRowContainer({ varid: "spanelIconBar" }, (iconBar) => {
 				iconBar.style({ "margin-right": "10px", "align-items": "center" })
@@ -340,7 +358,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createSPDataPanel(builder) {
+	createSPDataPanel(builder: UIBuilder) {
 		const comps: JSObject = {};
 		this.createSPDataPanelLayout(builder, comps)
 		this.createSPDataPanelArgsComp(builder, comps.dataPanelTop);
@@ -352,8 +370,8 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createSPDataPanelLayout(builder, comps) {
-		let splitterElem;
+	createSPDataPanelLayout(builder: UIBuilder, comps: JSObject) {
+		let splitterElem!: HTMLElement;
 
 		const panelComp = builder.newUIComp("blankComp").class(["col-comp"]).attrib({ name: "spDataPanel" });
 
@@ -381,8 +399,8 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createSPDataPanelArgsComp(builder, target) {
-		let argsLabel;
+	createSPDataPanelArgsComp(builder: UIBuilder, target: UIComp) {
+		let argsLabel!: UIComp;
 		builder.newUIComp("colComp")
 			.addLabel({ text: "Args:", name: "lbArgs" }, (label) => { argsLabel = label })
 			.addTextArea({ varid: "taArgs" }, (textarea) => {
@@ -397,7 +415,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createSPDataPanelAttachmentsComp(builder, target) {
+	createSPDataPanelAttachmentsComp(builder: UIBuilder, target: UIComp) {
 		builder.newUIComp()
 			.style({ "align-items": "flex-start" })
 			.addLabel({ elemType: "labelText", text: "Attachments:", name: "lbAttachments" })
@@ -420,8 +438,8 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createSPDataPanelOutputComp(builder, target) {
-		let outputLabel;
+	createSPDataPanelOutputComp(builder: UIBuilder, target: UIComp) {
+		let outputLabel!: UIComp;
 		builder.newUIComp()
 			.style({ "align-items": "flex-start" })
 			.addLabel({ text: "Output:", name: "lbOutput" }, (label) => { outputLabel = label })
@@ -468,25 +486,25 @@ class PlaygroundView extends WorkView {
 		}
 	}
 
-	onPreview(dlg) {
+	onPreview(dlg: ViewDialog) {
 		this.elem.icoOpenPreview.switch({ flag: dlg.isOpen() });
 	}
 
 	/**
 	 */
-	setRunning(flag) {
+	setRunning(flag: boolean) {
 		super.setRunning(flag);
 		this.elem.pbRun.disabled = flag;
 	}
 
 	/**
 	 */
-	setScript(scriptFile) {
+	setScript(scriptFile: DataFile | null) {
 		if (scriptFile) {
 			this.scriptDataFile = scriptFile;
 			this.elem.pbRun.innerHTML = this.scriptDataFile.name;
 			this.elem.icoScriptSource.style.color = "green";
-			CodeEditor.instance.setValue(this.scriptDataFile.data);
+			CodeEditor.instance?.setValue(this.scriptDataFile.data ?? "");
 			if (this.scriptDataFile.name.endsWith(".mjs")) {
 				this.elem.rbModuleMode.click();
 			} else {
@@ -522,7 +540,7 @@ class PlaygroundView extends WorkView {
 	/**
 	 */
 	getCurrentCode() {
-		return CodeEditor.instance.getValue();
+		return CodeEditor.instance?.getValue() ?? "";
 	}
 
 	/**
@@ -557,7 +575,7 @@ class PlaygroundView extends WorkView {
 	/**
 	 */
 	executeSnippetMode() {
-		const executor = (context, scriptCode) => {
+		const executor = (context: unknown, scriptCode: string) => {
 			return new Function(`"use strict";\n${scriptCode}`).bind(context);
 		}
 		executor(PlainJSContext, this.getCurrentCode())(this.getCurrentArgs(), this.getCurrentAttachments());
@@ -639,9 +657,9 @@ class PlaygroundView extends WorkView {
 	clearCode() {
 		this.setScript(null);
 		if (this.hasSnippetMode()) {
-			CodeEditor.instance.setValue(this.getText("newSnippet"));
+			CodeEditor.instance?.setValue(this.getText("newSnippet"));
 		} else {
-			CodeEditor.instance.setValue(this.getText("newModule"));
+			CodeEditor.instance?.setValue(this.getText("newModule"));
 			this.elem.tfRunMethod.value = "main";
 		}
 	}
@@ -654,7 +672,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	addOutputLine(line) {
+	addOutputLine(line: string) {
 		this.elem.taOutput.value += NL + line;
 		this.outputScrollTop();
 	}
@@ -672,7 +690,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	echoToOutput(obj) {
+	echoToOutput(obj: unknown) {
 		if (obj) {
 			this.addOutputLine(obj.toString());
 		}
@@ -680,25 +698,25 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	getText(id) {
-		return textCollection[id];
+	getText(id: string): string {
+		return textCollection[id as keyof typeof textCollection];
 	}
 }
 
 /**
  */
 class PlaygroundRequest {
-	clientId;
-	contentId;
+	clientId: string;
+	contentId: string;
 	keep = false;
-	content = {};
+	content: JSObject = {};
 
-	constructor(clientId, contentId) {
+	constructor(clientId: string, contentId: string) {
 		this.clientId = clientId;
 		this.contentId = contentId;
 	}
 
-	addContent(type, value) {
+	addContent(type: string, value: string) {
 		this.content[type] = value;
 	}
 
@@ -718,7 +736,7 @@ export function getView() {
 /**
  * export execution context, functions and objects
  */
-export function echo(obj, json = false) {
+export function echo(obj: unknown, json = false) {
 	Logger.consoleLog(obj);
 	if (json && obj) {
 		viewInstance.echoToOutput(JSON.stringify(obj));
@@ -727,12 +745,12 @@ export function echo(obj, json = false) {
 	}
 };
 
-export let previewComp = null; // NOSONAR
+export let previewComp: UIComp | null = null; // NOSONAR
 
 //execution context for plain js snippets
 const PlainJSContext = {
 	refId: "",
-	previewComp: null,
+	previewComp: null as UIComp | null,
 	echo: echo
 };
 
@@ -741,7 +759,7 @@ const PlainJSContext = {
  */
 class PreviewDialog extends ViewDialog {
 
-	constructor(parent) {
+	constructor(parent: HTMLElement) {
 		super();
 		this.parentElem = parent;
 		this.initialize();
@@ -756,7 +774,7 @@ class PreviewDialog extends ViewDialog {
 		this.content.style({ "background": "var(--workarea-bg)" });
 		this.iconbar
 			.style({ display: "" })
-			.addActionIcon({ varid: "clearIcon", iconName: Icons.trash(), title: "Clear Preview" }, (icon) => {
+			.addActionIcon({ varid: "clearIcon", iconName: Icons.trash(), title: "Clear Preview" }, (icon: UIComp) => {
 				icon.class(["dlg-header-action-icon"]);
 				onClicked(icon, () => {
 					this.createPreviewComp();

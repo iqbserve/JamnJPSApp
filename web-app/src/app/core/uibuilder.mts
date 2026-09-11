@@ -37,6 +37,9 @@ export type UICompDefArg = string | UICompDef | UICompCb;
 
 export type UIElemProps = Record<string, string>;
 
+//attrib() also sets real DOM element properties (disabled, spellcheck, ...), not just string attributes
+export type AttribProps = Record<string, string | boolean>;
+
 export type UICompCb = (comp: UIComp, comp2?: UIComp) => void;
 
 /**
@@ -220,10 +223,10 @@ export class UIBuilder {
         }
     }
 
-    static setAttributesOf(domElem: HTMLElement, attributeProps: UIElemProps) {
+    static setAttributesOf(domElem: HTMLElement, attributeProps: AttribProps) {
         for (const name in attributeProps) {
             if (UIBuilder.#setterAttributes.includes(name) || isDataAttribute(name)) {
-                domElem.setAttribute(name, attributeProps[name]);
+                domElem.setAttribute(name, attributeProps[name] as string);
             } else {
                 (domElem as unknown as JSObject)[name] = attributeProps[name];
             }
@@ -389,11 +392,11 @@ export class UIComp {
      * (def=dataobject, cb=callback function)
      * is retained
      */
-    resolveArgs(argDef: UICompDefArg | undefined, argCb: UICompCb | undefined): { def: UICompDef, cb: UICompCb } {
+    resolveArgs<C extends UICompCb | UICompPairCb = UICompCb>(argDef: UICompDefArg | undefined, argCb: C | undefined): { def: UICompDef, cb: C } {
         let def: UICompDef;
         let cb = argCb;
         if (typeUtil.isFunction(argDef)) {
-            cb = argDef as UICompCb;
+            cb = argDef as C;
             def = {};
         } else if (typeUtil.isString(argDef)) {
             def = { elemType: argDef as string };
@@ -402,7 +405,7 @@ export class UIComp {
         } else {
             def = argDef as UICompDef;
         }
-        cb = cb || (() => { });
+        cb = cb || (() => { }) as unknown as C;
         return { def, cb };
     }
 
@@ -563,7 +566,7 @@ export class UIComp {
         return this;
     }
 
-    attrib(attribProps: UIElemProps) {
+    attrib(attribProps: AttribProps) {
         UIBuilder.setAttributesOf(this.domElem, attribProps);
         this.collectAttributesFrom(this.domElem);
         return this;
@@ -885,8 +888,8 @@ export class UIComp {
     }
 
     addLabelTextField(labelDef?: UICompDefArg, fieldDef?: UICompDefArg, cb?: UICompPairCb) {
-        ({ def: labelDef, cb } = this.resolveArgs(labelDef, cb));
-        ({ def: fieldDef, cb } = this.resolveArgs(fieldDef, cb));
+        ({ def: labelDef, cb } = this.resolveArgs<UICompPairCb>(labelDef, cb));
+        ({ def: fieldDef, cb } = this.resolveArgs<UICompPairCb>(fieldDef, cb));
 
         const newComp: { label: UIComp | null, textField: UIComp | null } = { label: null, textField: null };
         this.addLabel(labelDef, (comp) => { newComp.label = comp; });
@@ -899,8 +902,8 @@ export class UIComp {
     }
 
     addLabelTextArea(labelDef?: UICompDefArg, areaDef?: UICompDefArg, cb?: UICompPairCb) {
-        ({ def: labelDef, cb } = this.resolveArgs(labelDef, cb));
-        ({ def: areaDef, cb } = this.resolveArgs(areaDef, cb));
+        ({ def: labelDef, cb } = this.resolveArgs<UICompPairCb>(labelDef, cb));
+        ({ def: areaDef, cb } = this.resolveArgs<UICompPairCb>(areaDef, cb));
 
         const newComp: { label: UIComp | null, textArea: UIComp | null } = { label: null, textArea: null };
         this.addLabel(labelDef, (comp) => { newComp.label = comp });
@@ -913,8 +916,8 @@ export class UIComp {
     }
 
     addLabelButton(labelDef?: UICompDefArg, buttonDef?: UICompDefArg, cb?: UICompPairCb) {
-        ({ def: labelDef, cb } = this.resolveArgs(labelDef, cb));
-        ({ def: buttonDef, cb } = this.resolveArgs(buttonDef, cb));
+        ({ def: labelDef, cb } = this.resolveArgs<UICompPairCb>(labelDef, cb));
+        ({ def: buttonDef, cb } = this.resolveArgs<UICompPairCb>(buttonDef, cb));
 
         const newComp: { label: UIComp | null, button: UIComp | null } = { label: null, button: null };
         //by default deactivate label for buttons
