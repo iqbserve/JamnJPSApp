@@ -127,14 +127,14 @@ function startApp() {
 			initApplicationFeatures();
 			initExtensionFeatures(appConfig, () => {
 
-				viewManager = new WorkbenchViewManager(document.getElementById("app-workarea"));
+				viewManager = new WorkbenchViewManager(document.getElementById("app-workarea") as HTMLElement);
 
 				initWebSocket();
 				createUI();
 
 				authProvider.notify();
 
-				setVisibility(rootElement, true);
+				setVisibility(rootElement as HTMLElement, true);
 				sidebar.getItem(WbProperties.autoStartFeature())?.click();
 
 				document.documentElement.style.cursor = "default";
@@ -202,12 +202,14 @@ function applyLoginState() {
 	const workIcon = sidebar.getWorkPanelIcon("systemLogin");
 	const sbarItem = sidebar.getItem("systemLogin");
 
+	if (!workIcon) { return; }
+
 	if (authProvider?.isAvailable()) {
 		const authenticated = authProvider.isAuthenticated;
 		const icon = workIcon;
 
 		authProvider.getUserProfile((profile) => {
-			const userProfile = profile as UserProfile;
+			const userProfile = profile;
 			const userName = userProfile?.username || 'unknown';
 			if (authenticated) {
 				workIcon.switch({ flag: authenticated });
@@ -232,8 +234,10 @@ function applyLoginState() {
 		const hint = WbProperties.get("noLoginHint", "Login NOT available");
 		workIcon.classList.add("item-disabled");
 		workIcon.title = hint;
-		sbarItem.classList.add("item-disabled");
-		sbarItem.title = hint;
+		if (sbarItem) {
+			sbarItem.classList.add("item-disabled");
+			sbarItem.title = hint;
+		}
 	}
 }
 
@@ -279,9 +283,9 @@ function createSidebar() {
 		})
 		.build(new UIBuilder().setDefaultCompProps(new DefaultCompProps()));
 
-	new SplitBarHandler(document.getElementById("app-sidebar-splitter"))
+	new SplitBarHandler(document.getElementById("app-sidebar-splitter") as HTMLElement)
 		.setCompBefore(sidebar)
-		.setCompAfter(document.getElementById("app-workarea"))
+		.setCompAfter(document.getElementById("app-workarea") as HTMLElement)
 		.setBarrierActionBefore((splitter, val) => {
 			//sidebar width < x - collaps it
 			if (val < 100) {
@@ -298,7 +302,7 @@ function createSidebar() {
  */
 function createIntroBox() {
 
-	const intro = document.getElementById("app-intro-overlay");
+	const intro = document.getElementById("app-intro-overlay") as HTMLElement;
 
 	if (!WbProperties.showIntro()) {
 		setDisplay(intro, false);
@@ -309,7 +313,7 @@ function createIntroBox() {
 		setDisplay(evt.currentTarget as HTMLElement, false);
 	});
 
-	document.getElementById("app-intro-content").innerHTML = `
+	(document.getElementById("app-intro-content") as HTMLElement).innerHTML = `
 		<span style="padding: 20px;">
 			<h1 style="color: var(--isa-title-grayblue)">Welcome to<br>Jamn Workbench</h1>
 			<span style="font-size: 18px;">
@@ -334,9 +338,9 @@ function createIntroBox() {
 /**
  */
 class AuthenticationProvider {
-	module: ESModule;
-	instance: KeycloakIFace;
-	userProfile: UserProfile;
+	module!: ESModule;
+	instance!: KeycloakIFace;
+	userProfile!: UserProfile;
 
 	isAuthenticated: boolean = false;
 	timerId: number | null = null;
@@ -409,11 +413,11 @@ class AuthenticationProvider {
 	}
 
 	deleteTokenRefreshTimer() {
-		clearInterval(this.timerId);
+		clearInterval(this.timerId ?? undefined);
 		this.timerId = null;
 	}
 
-	getUserProfile(cb: (profile: UserProfile) => void) {
+	getUserProfile(cb: (profile: UserProfile | null) => void) {
 		if (this.isLoggedIn()) {
 			if (this.userProfile) {
 				cb(this.userProfile);
