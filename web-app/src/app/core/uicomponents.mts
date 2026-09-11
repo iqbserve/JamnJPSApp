@@ -148,7 +148,7 @@ export class WbSidebar extends HTMLElement {
                     topicHead.addActionIcon({ iconName: Icons.gi_toggleExpand() }, (icon) => {
                         icon.title("Expand/Collapse Topics").class("sidebar-header-icon").style({ "font-size": "14px", "margin-left": "10px" });
                         onClicked(icon, () => {
-                            this.#expandTopics(icon.domElem);
+                            this.#expandTopics(icon.domElem as ActionIcon);
                         });
                     })
                         .addTextField({ clazzes: "embedded-search-field" }, (searchField) => {
@@ -162,31 +162,28 @@ export class WbSidebar extends HTMLElement {
             .addList({ varid: "topicList", clazzes: "sbar-topic-list" });
     }
 
-    #newWorkIcon(id, iconName) {
-        const elem = UIBuilder.createDomElementFrom(`<a-icon iconname="${iconName}" id="${id}" class="sidebar-header-icon"></a-icon>`);
+    #newWorkIcon(id: string | undefined, iconName: string): HTMLElement {
+        const elem = UIBuilder.createDomElementFrom(`<a-icon iconname="${iconName}" id="${id}" class="sidebar-header-icon"></a-icon>`) as HTMLElement;
         return elem;
     }
 
     #onItemClick(evt: Event) {
         const target = evt.target as HTMLElement;
-        this.#itemAction(target.dataset.feature);
+        this.#itemAction(target.dataset.feature ?? "");
     }
 
     #createTopicList() {
 
-        const topicListElem = this.#elem.topicList;
-        let topicElem = null;
-        let itemElem = null;
-        let itemListElem = null;
+        const topicListElem = this.#elem.topicList as HTMLElement;
 
         this.#topicDefs.forEach((topicDef: ConfigObject) => {
-            topicElem = this.#newTopic(topicDef.id, topicDef);
-            itemListElem = this.#newTopicList();
+            const topicElem = this.#newTopic(topicDef.id as string, topicDef);
+            const itemListElem = this.#newTopicList();
             topicElem.append(itemListElem);
             topicListElem.append(topicElem);
 
             (topicDef.items as Array<ConfigObject>)?.forEach((itemDef: ConfigObject) => {
-                itemElem = this.#newTopicItem(itemDef.id, itemDef.text, itemDef.feature);
+                const itemElem = this.#newTopicItem(itemDef.id as string, itemDef.text as string, itemDef.feature as string);
                 itemListElem.append(itemElem);
                 onClicked(itemElem, (evt) => {
                     this.#onItemClick(evt);
@@ -195,10 +192,10 @@ export class WbSidebar extends HTMLElement {
         });
     }
 
-    #newTopic(key, def) {
+    #newTopic(key: string, def: ConfigObject): HTMLElement {
 
-        const iconClass = Icons.getIconClassString(def.icon);
-        const text = def.text;
+        const iconClass = Icons.getIconClassString(def.icon as string);
+        const text = def.text as string;
         const html = `
         <li class="sbar-topic" name="${text}">
             <span class="sbar-topic-header node-trigger">
@@ -226,21 +223,20 @@ export class WbSidebar extends HTMLElement {
         return elem;
     }
 
-    #newTopicList() {
+    #newTopicList(): HTMLElement {
         const html = `<ul class="sbar-item-list"></ul>`;
-        const list = UIBuilder.createDomElementFrom(html);
-        return list;
+        return UIBuilder.createDomElementFrom(html) as HTMLElement;
     }
 
-    #newTopicItem(id, text, feature) {
-        id = id ? "id=" + id : "";
-        feature = feature ? `data-feature="${feature}"` : "";
-        const html = `<li class="sbar-item" ${id} ${feature}>${text}</li>`;
-        return UIBuilder.createDomElementFrom(html);
+    #newTopicItem(id: string, text: string, feature: string): HTMLElement {
+        const idAttr = id ? "id=" + id : "";
+        const featureAttr = feature ? `data-feature="${feature}"` : "";
+        const html = `<li class="sbar-item" ${idAttr} ${featureAttr}>${text}</li>`;
+        return UIBuilder.createDomElementFrom(html) as HTMLElement;
     }
 
-    #expandTopics(icon) {
-        let displayVal;
+    #expandTopics(icon: ActionIcon) {
+        let displayVal = "";
         icon.switch({
             cb: (icon, flag) => {
                 icon.title = flag ? "Collapse Topics" : "Expand Topics";
@@ -265,15 +261,15 @@ export class WbSidebar extends HTMLElement {
             this.#elem.topicHead.classList.remove("topic-head-freez");
         }
 
-        const showItem = (flag, item) => {
-            const topic = item.parentElement.parentElement;
+        const showItem = (flag: boolean, item: HTMLElement) => {
+            const topic = item.parentElement?.parentElement as HTMLElement;
 
             item.style.display = flag ? "" : "none";
             if (flag) {
                 //ensure items are visible - not collapsed
-                item.parentElement.style.display = "block"
+                if (item.parentElement) { item.parentElement.style.display = "block"; }
             };
-            if (item.parentElement.querySelectorAll('li:not([style*="display: none;"])').length == 0) {
+            if (item.parentElement?.querySelectorAll('li:not([style*="display: none;"])').length === 0) {
                 topic.style.display = "none";
             } else {
                 topic.style.display = "block";
@@ -342,13 +338,13 @@ export class WbSidebar extends HTMLElement {
     /**
      * { text: , id: , icon:  }
      */
-    addHeaderWorkIcon(def) {
-        let icon = null;
+    addHeaderWorkIcon(def: ConfigObject): HTMLElement | null {
+        let icon: HTMLElement | null = null;
         const workIconBar = this.#elem.workIconBar;
         if (def.icon) {
-            icon = this.#newWorkIcon(def.id, def.icon);
-            icon.title = def.text ? def.text : "";
-            icon.dataset.feature = def.feature ? def.feature : "";
+            icon = this.#newWorkIcon(def.id as string, def.icon as string);
+            icon.title = def.text ? (def.text as string) : "";
+            icon.dataset.feature = def.feature ? (def.feature as string) : "";
             workIconBar.append(icon);
             if (icon.dataset.feature) {
                 workIconBar[icon.dataset.feature] = icon;
@@ -391,9 +387,9 @@ export class ActionIcon extends HTMLElement {
         return Icons.getIconShapeClasses(this.iconname)[idx];
     }
 
-    attributeChangedCallback(name, oldValue, newValue) {
+    attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
         if (name === "iconname") {
-            this.iconname = newValue;
+            this.iconname = newValue ?? "";
             this.#getIconClasses().forEach(clazz => {
                 this.classList.add(clazz);
             });
@@ -406,9 +402,9 @@ export class ActionIcon extends HTMLElement {
 
     setEnabled(flag: boolean) {
         if (flag) {
-            this.style["pointer-events"] = "all";
+            this.style.setProperty("pointer-events", "all");
         } else {
-            this.style["pointer-events"] = "none";
+            this.style.setProperty("pointer-events", "none");
         }
     }
 
@@ -440,7 +436,7 @@ export class SimpleCrudComp extends HTMLElement {
     static SEPARATOR = "separator";
 
     elem: JSObject = {};
-    dataList: DataList;
+    dataList!: DataList;
 
     constructor() {
         super();
@@ -450,7 +446,7 @@ export class SimpleCrudComp extends HTMLElement {
         const comp = builder.newUICompFor(this);
 
         comp.style({ display: "flex", "gap": comp.domElem.style.gap || "10px" })
-            .addRowContainer(null, (fieldPart) => {
+            .addRowContainer((fieldPart) => {
                 fieldPart
                     .style({ "align-items": "center" })
                     .addLabelTextField(
@@ -558,11 +554,11 @@ export class SimpleCrudComp extends HTMLElement {
 
     setBarPosition(pos: 'right' | 'top' | 'bottom') {
         if (pos == 'right') {
-            this.style["flex-direction"] = "row";
+            this.style.setProperty("flex-direction", "row");
         } else if (pos == 'top') {
-            this.style["flex-direction"] = "column-reverse";
+            this.style.setProperty("flex-direction", "column-reverse");
         } else if (pos == 'bottom') {
-            this.style["flex-direction"] = "column";
+            this.style.setProperty("flex-direction", "column");
         }
         return this;
     }

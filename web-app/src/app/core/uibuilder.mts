@@ -40,6 +40,11 @@ export type UIElemProps = Record<string, string>;
 export type UICompCb = (comp: UIComp, comp2?: UIComp) => void;
 
 /**
+ * Used by the addLabelXxx(...) combo methods, where both comps are always provided.
+ */
+export type UICompPairCb = (comp: UIComp, comp2: UIComp) => void;
+
+/**
  */
 export type UIBuildConfig = {
     beforeBuild?: <T extends HTMLElement>(comp: T, ctx: { builder: UIBuilder, options?: UIElemProps }) => void;
@@ -879,7 +884,7 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addLabelTextField(labelDef?: UICompDefArg, fieldDef?: UICompDefArg, cb?: UICompCb) {
+    addLabelTextField(labelDef?: UICompDefArg, fieldDef?: UICompDefArg, cb?: UICompPairCb) {
         ({ def: labelDef, cb } = this.resolveArgs(labelDef, cb));
         ({ def: fieldDef, cb } = this.resolveArgs(fieldDef, cb));
 
@@ -893,7 +898,7 @@ export class UIComp {
         return this;
     }
 
-    addLabelTextArea(labelDef?: UICompDefArg, areaDef?: UICompDefArg, cb?: UICompCb) {
+    addLabelTextArea(labelDef?: UICompDefArg, areaDef?: UICompDefArg, cb?: UICompPairCb) {
         ({ def: labelDef, cb } = this.resolveArgs(labelDef, cb));
         ({ def: areaDef, cb } = this.resolveArgs(areaDef, cb));
 
@@ -907,7 +912,7 @@ export class UIComp {
         return this;
     }
 
-    addLabelButton(labelDef?: UICompDefArg, buttonDef?: UICompDefArg, cb?: UICompCb) {
+    addLabelButton(labelDef?: UICompDefArg, buttonDef?: UICompDefArg, cb?: UICompPairCb) {
         ({ def: labelDef, cb } = this.resolveArgs(labelDef, cb));
         ({ def: buttonDef, cb } = this.resolveArgs(buttonDef, cb));
 
