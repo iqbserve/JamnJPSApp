@@ -153,7 +153,7 @@ class SystemInfoView extends WorkView {
 		});
 
 		fieldset.addFromHtml(this.reworkHtml(tableHtml), (elems: Element[]) => {
-			const tableElem = elems[0].firstElementChild;
+			const tableElem = elems[0].firstElementChild as HTMLTableElement;
 			this.configTable = new WorkViewTableHandler(tableElem);
 		});
 

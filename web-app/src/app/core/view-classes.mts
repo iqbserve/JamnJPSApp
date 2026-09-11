@@ -4,19 +4,22 @@ import { Logger } from 'core/logging.mjs';
 import { findChildOf, setVisibility, setDisplay, typeUtil, fileUtil } from 'core/tools.mjs';
 import { DataFile, ViewSource } from 'core/data-classes.mjs';
 import { UIBuilder, onClicked, onDblClicked, DefaultCompProps, ContextId, newUIId, reworkHtmlElementIds } from 'core/uibuilder.mjs';
+import type { UIComp } from 'core/uibuilder.mjs';
 import * as Icons from 'core/icons.mjs';
 
 import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
 
 /* Types */
 import type { DialogMessage, JSObject, PropertiesObject } from 'types/commons';
+import type { WorkbenchViewManager } from 'core/view-manager.mjs';
+import type { ActionIcon } from 'core/uicomponents.mjs';
 
 /**
  * Internal section
  */
 const InternalUIBuilder = new UIBuilder()
-	.setElementCollection(null)
-	.setObjectCollection(null);
+	.setElementCollection(null as unknown as JSObject)
+	.setObjectCollection(null as unknown as JSObject);
 
 /**
  * Public section
@@ -24,7 +27,7 @@ const InternalUIBuilder = new UIBuilder()
 
 /**
  */
-export function loadServerStyleSheet(path) {
+export function loadServerStyleSheet(path: string) {
 	UIBuilder.loadServerStyleSheet(path);
 }
 
@@ -41,21 +44,21 @@ export class AbstractView {
 	//a custom id
 	id = "";
 	viewSource = new ViewSource("");
-	viewElement: HTMLElement;
+	viewElement!: HTMLElement;
 	//the obligatory flag to control the init sequence
 	isInitialized = false;
 
-	constructor(id: string, file: string = null) {
+	constructor(id: string, file: string | null = null) {
 		this.id = id;
 		this.viewSource = new ViewSource(file);
 		this.isInitialized = false;
 	}
 
-	createViewElementFor(view, html) {
+	createViewElementFor(view: AbstractView, html: string | null) {
 		if (html) {
 			const template = document.createElement("template");
 			template.innerHTML = html;
-			view.viewElement = template.content.firstElementChild;
+			view.viewElement = template.content.firstElementChild as HTMLElement;
 			if (view instanceof AbstractView) {
 				view.viewElement.id = view.id;
 			}
@@ -66,7 +69,7 @@ export class AbstractView {
 	 * structural placeholder method
 	 * default - viewSrc is expected to contain the view html
 	 */
-	getViewHtml(viewSrc, cb) {
+	getViewHtml(viewSrc: ViewSource, cb: (html: string | null) => void) {
 		cb(viewSrc.getHtml());
 	}
 
@@ -96,7 +99,7 @@ export class AbstractView {
 
 	/**
 	 */
-	reworkHtml(html) {
+	reworkHtml(html: string | null) {
 		//to be overwritten
 		return html;
 	}
@@ -104,7 +107,7 @@ export class AbstractView {
 	/**
 	 * has to be overwritten when working with the uid
 	 */
-	getElement(id) {
+	getElement(id: string) {
 		return findChildOf(this.viewElement, id);
 	}
 
@@ -120,11 +123,11 @@ export class AbstractView {
 		//to be overwritten
 	}
 
-	setVisible(flag) {
+	setVisible(flag: boolean) {
 		setVisibility(this.viewElement, flag);
 	}
 
-	setDisplay(elem, flag) {
+	setDisplay(elem: HTMLElement, flag: boolean | string) {
 		setDisplay(elem, flag);
 	}
 }
@@ -133,14 +136,14 @@ export class AbstractView {
  * Work View base class.
  */
 export class WorkView extends AbstractView {
-	viewManager = null;
+	viewManager: WorkbenchViewManager | null = null;
 
-	viewHeader;
-	viewBody;
-	viewWorkarea;
-	sidePanel;
+	viewHeader!: WorkViewHeader;
+	viewBody!: HTMLElement;
+	viewWorkarea!: HTMLElement;
+	sidePanel?: WorkViewSidepanel;
 
-	bodyInitialDisplay;
+	bodyInitialDisplay!: string;
 
 	state = {
 		isRunning: false,
@@ -149,20 +152,20 @@ export class WorkView extends AbstractView {
 		isCollapsed: false
 	}
 
-	constructor(id, file) {
+	constructor(id: string, file: string | null) {
 		super(id, file);
 
 		this.state.isRunning = false;
 		this.state.isOpen = false;
 	}
 
-	reworkHtml(html) {
-		html = reworkHtmlElementIds(html, this.uid.get());
+	reworkHtml(html: string | null) {
+		html = reworkHtmlElementIds(html ?? "", this.uid.get());
 		return html;
 	}
 
 	//overwritten cause html id rework
-	getElement(id) {
+	getElement(id: string) {
 		return findChildOf(this.viewElement, this.uid.get(id));
 	}
 
@@ -170,15 +173,15 @@ export class WorkView extends AbstractView {
 		//to be overwritten
 		//called from getViewElement(...)
 
-		this.viewBody = this.getElement("work-view-body");
-		this.viewWorkarea = this.getElement("work-view-workarea");
+		this.viewBody = this.getElement("work-view-body") as HTMLElement;
+		this.viewWorkarea = this.getElement("work-view-workarea") as HTMLElement;
 		this.bodyInitialDisplay = this.viewBody.style.display;
 
 		const builder = new UIBuilder().setElementCollection(this);
 		builder.newUICompFor(this.viewBody)
 			.addDiv({ varid: "disableOverlay", clazzes: "work-view-disable-overlay" }, (divComp) => {
 				divComp.addSpan((textComp) => {
-					divComp.domElem["setWorkingText"] = (text) => {
+					(divComp.domElem as JSObject)["setWorkingText"] = (text: string) => {
 						textComp.html(text);
 					}
 				})
@@ -187,7 +190,7 @@ export class WorkView extends AbstractView {
 		this.viewHeader = new WorkViewHeader(this, this.state);
 		this.viewHeader.rightIconBar((bar) => {
 			bar.addIcon({ id: "close.icon", title: "Close view" }, Icons.close(), () => {
-				this.viewManager.closeView(this);
+				this.viewManager?.closeView(this);
 			});
 			bar.addIcon({ id: "pin.icon", title: "Pin to keep view" }, Icons.pin(), () => {
 				this.togglePinned();
@@ -201,18 +204,18 @@ export class WorkView extends AbstractView {
 			if (this.viewManager) {
 				menu
 					.addItem("Close", () => {
-						this.viewManager.closeView(this);
+						this.viewManager?.closeView(this);
 					}, { separator: "bottom" })
 
 					.addItem("Move up", () => {
-						this.viewManager.moveView(this, "up");
+						this.viewManager?.moveView(this, "up");
 					})
 					.addItem("Move down", () => {
-						this.viewManager.moveView(this, "down");
+						this.viewManager?.moveView(this, "down");
 					})
 					.addItem("Move to ...", () => {
-						this.viewManager.promptUserInput({ title: "", message: "Please enter your desired position number:", data: "1" },
-							(value) => value ? this.viewManager.moveView(this, value) : null
+						this.viewManager?.promptUserInput({ title: "", message: "Please enter your desired position number:", data: "1" },
+							(value) => value ? this.viewManager?.moveView(this, value) : null
 						);
 					});
 			}
@@ -236,7 +239,7 @@ export class WorkView extends AbstractView {
 		return !(this.state.isRunning || this.state.isPinned);
 	}
 
-	setRunning(flag) {
+	setRunning(flag: boolean) {
 		this.state.isRunning = flag;
 		this.viewHeader.showRunning(flag);
 	}
@@ -250,7 +253,7 @@ export class WorkView extends AbstractView {
 		}
 	}
 
-	setTitle(title) {
+	setTitle(title: string) {
 		this.viewHeader.setTitle(title);
 	}
 
@@ -270,9 +273,9 @@ export class WorkView extends AbstractView {
 	}
 
 	toggleSidePanel() {
-		this.sidePanel.toggle();
+		this.sidePanel?.toggle();
 		this.viewHeader.icons["sidepanel.icon"].switch({
-			flag: this.sidePanel.isOpen(), cb: (icon, flag) => {
+			flag: this.sidePanel?.isOpen(), cb: (icon, flag) => {
 				icon.title = flag ? "Hide Sidepanel" : "Show Sidepanel";
 			}
 		});
@@ -307,17 +310,17 @@ export class WorkView extends AbstractView {
 		return this.state.isCollapsed;
 	}
 
-	statusLineInfo(info) {
+	statusLineInfo(info: string) {
 		WbApp.statusLineInfo(info);
 	}
 
-	copyToClipboard(text) {
+	copyToClipboard(text: string) {
 		if (!this.state.isRunning && (text && text.length > 0)) {
 			navigator.clipboard.writeText(text);
 		}
 	}
 
-	saveToFile(fileName, text) {
+	saveToFile(fileName: string, text: string) {
 		if (!this.state.isRunning && text.length > 0) {
 			fileUtil.saveToFileClassic(fileName, text);
 		}
@@ -328,18 +331,18 @@ export class WorkView extends AbstractView {
 /**
  */
 export class WorkViewHeader {
-	view;
-	viewState;
+	view: WorkView;
+	viewState: { isRunning: boolean, isOpen: boolean, isPinned: boolean, isCollapsed: boolean };
 
-	container;
-	icons = {};
-	headerMenu;
-	iconBarLeft;
-	iconBarRight;
-	progressBar;
-	title;
+	container!: HTMLElement;
+	icons: Record<string, ActionIcon> = {};
+	headerMenu!: WorkViewHeaderMenu;
+	iconBarLeft!: WorkViewHeaderIconBar;
+	iconBarRight!: WorkViewHeaderIconBar;
+	progressBar!: HTMLElement;
+	title!: HTMLElement;
 
-	constructor(view, viewState) {
+	constructor(view: WorkView, viewState: { isRunning: boolean, isOpen: boolean, isPinned: boolean, isCollapsed: boolean }) {
 		this.view = view;
 		this.viewState = viewState;
 		this.#initialize();
@@ -358,39 +361,39 @@ export class WorkViewHeader {
 		this.progressBar = this.#getElement("wkv-header-progressbar");
 	}
 
-	#getElement(id) {
-		return this.view.getElement(id);
+	#getElement(id: string): HTMLElement {
+		return this.view.getElement(id) as HTMLElement;
 	}
 
-	#toggleHeaderMenu(evt = null) {
+	#toggleHeaderMenu(evt: Event | null = null) {
 		if (!this.viewState.isCollapsed) {
 			this.headerMenu.toggleVisibility(evt);
 		}
 	}
 
-	leftIconBar(configCb = null) {
+	leftIconBar(configCb: ((bar: WorkViewHeaderIconBar) => void) | null = null) {
 		if (configCb) {
 			configCb(this.iconBarLeft);
 		}
 		return this.iconBarLeft;
 	}
 
-	rightIconBar(configCb = null) {
+	rightIconBar(configCb: ((bar: WorkViewHeaderIconBar) => void) | null = null) {
 		if (configCb) {
 			configCb(this.iconBarRight);
 		}
 		return this.iconBarRight;
 	}
 
-	menu(configCb = null) {
+	menu(configCb: ((menu: WorkViewHeaderMenu) => void) | null = null) {
 		if (configCb) {
 			configCb(this.headerMenu);
 		}
 		return this.headerMenu;
 	}
 
-	showRunning() {
-		const classList = this.progressBar.firstElementChild.classList;
+	showRunning(flag?: boolean) {
+		const classList = (this.progressBar.firstElementChild as HTMLElement).classList;
 		const clazz = "progress-showWorking";
 		classList.toggle(clazz);
 		if (!this.viewState.isRunning && classList.contains(clazz)) {
@@ -398,7 +401,7 @@ export class WorkViewHeader {
 		}
 	}
 
-	setTitle(text) {
+	setTitle(text: string) {
 		this.title.innerHTML = text;
 	}
 }
@@ -406,14 +409,14 @@ export class WorkViewHeader {
 /**
  */
 export class WorkViewSidepanel {
-	view;
-	splitHandler;
-	splitterElem;
-	sidePanelElem;
-	workareaElem;
-	viewCompElem;
+	view: WorkView;
+	splitHandler?: SplitBarHandler;
+	splitterElem!: HTMLElement;
+	sidePanelElem!: HTMLElement;
+	workareaElem: HTMLElement;
+	viewCompElem?: HTMLElement;
 
-	constructor(view, workareaElem) {
+	constructor(view: WorkView, workareaElem: HTMLElement) {
 		this.view = view;
 		this.workareaElem = workareaElem;
 		this.#initialize();
@@ -421,8 +424,8 @@ export class WorkViewSidepanel {
 
 	#initialize() {
 
-		this.splitterElem = this.view.getElement("work-view-sidepanel-splitter");
-		this.sidePanelElem = this.view.getElement("work-view-sidepanel");
+		this.splitterElem = this.view.getElement("work-view-sidepanel-splitter") as HTMLElement;
+		this.sidePanelElem = this.view.getElement("work-view-sidepanel") as HTMLElement;
 
 		if (this.splitterElem && this.sidePanelElem) {
 
@@ -465,7 +468,7 @@ export class WorkViewSidepanel {
 		return this;
 	}
 
-	setViewComp(compElem) {
+	setViewComp(compElem: HTMLElement) {
 		if (compElem) {
 			if (this.viewCompElem) {
 				this.viewCompElem.remove();
@@ -476,7 +479,7 @@ export class WorkViewSidepanel {
 		return this;
 	}
 
-	setWidth(width) {
+	setWidth(width: string) {
 		this.sidePanelElem.style.width = width;
 		return this;
 	}
@@ -486,10 +489,10 @@ export class WorkViewSidepanel {
  */
 export class WorkViewHeaderMenu {
 
-	#menuElem;
-	#toggleEvent;
+	#menuElem: HTMLElement;
+	#toggleEvent: Event | null = null;
 
-	constructor(containerElem) {
+	constructor(containerElem: HTMLElement) {
 		this.#menuElem = containerElem;
 
 		window.addEventListener("click", (evt) => {
@@ -506,23 +509,23 @@ export class WorkViewHeaderMenu {
 		}, true); //true is necessary
 	}
 
-	#onAnyCloseTriggerEvent(evt) {
+	#onAnyCloseTriggerEvent(evt: Event) {
 		if (this.#toggleEvent !== evt) {
 			this.close();
 		}
 	}
 
-	#positionMenu(evt) {
-		const trigger = evt.currentTarget;
+	#positionMenu(evt: Event) {
+		const trigger = evt.currentTarget as HTMLElement;
 		const rect = trigger.getBoundingClientRect();
 		this.#menuElem.style.top = `${window.scrollY + rect.top - 10}px`;
 		this.#menuElem.style.left = `${window.scrollX + rect.right + 10}px`;
 	}
 
-	toggleVisibility(evt = null) {
+	toggleVisibility(evt: Event | null = null) {
 		if (this.hasItems()) {
 			this.#toggleEvent = evt;
-			this.#positionMenu(evt);
+			if (evt) { this.#positionMenu(evt); }
 			setDisplay(this.#menuElem, this.#menuElem.style.display === "none");
 		}
 	}
@@ -535,7 +538,7 @@ export class WorkViewHeaderMenu {
 		return this.#menuElem?.children.length > 0;
 	}
 
-	addItem(text, cb, props: PropertiesObject = {}) {
+	addItem(text: string, cb: (evt: Event) => void, props: PropertiesObject & { separator?: string, pos?: InsertPosition } = {}) {
 		const item = document.createElement("a");
 		item.href = "view: " + text;
 		item.innerHTML = text;
@@ -564,15 +567,15 @@ export class WorkViewHeaderMenu {
 /**
  */
 export class WorkViewHeaderIconBar {
-	iconBarComp;
-	items;
+	iconBarComp: UIComp;
+	items: Record<string, HTMLElement>;
 
-	constructor(iconBarElem, items = {}) {
+	constructor(iconBarElem: HTMLElement, items: Record<string, HTMLElement> = {}) {
 		this.items = items;
 		this.iconBarComp = InternalUIBuilder.newUICompFor(iconBarElem);
 	}
 
-	addIcon(props, icon, action) {
+	addIcon(props: { id: string, title: string }, icon: string, action: (evt: Event) => void) {
 		this.iconBarComp.addActionIcon({ "iconName": icon, "title": props.title }, (icon) => {
 			onClicked(icon, (evt) => { action(evt); });
 			this.items[props.id] = icon.domElem;
@@ -587,15 +590,15 @@ export class ViewDialog extends AbstractView {
 
 	static default = { clazzes: [], attribProps: {}, styleProps: { "margin-top": "150px" } };
 
-	parentElem;
+	parentElem!: HTMLElement;
 
-	#dialogElem;
-	#dragHandler;
-	#resizeHandler;
+	#dialogElem!: HTMLDialogElement;
+	#dragHandler?: DialogDragHandler;
+	#resizeHandler?: DialogResizeHandler;
 
-	#lastPosition;
+	#lastPosition?: DOMRect;
 
-	listener = [];
+	listener: Array<(dlg: ViewDialog) => void> = [];
 
 	constructor() {
 		super("");
@@ -605,16 +608,16 @@ export class ViewDialog extends AbstractView {
 		this.isInitialized = true;
 	}
 
-	getElement(id) {
+	getElement(id: string) {
 		return findChildOf(this.dialog(), id);
 	}
 
-	createDialogElement(parent = null) {
+	createDialogElement(parent: HTMLElement | null = null) {
 		if (parent) { this.parentElem = parent; }
 
 		this.#dialogElem = document.createElement("dialog");
 		this.#dialogElem.className = "view-dialog";
-		this.#dialogElem.style["margin-top"] = ViewDialog.default.styleProps["margin-top"];
+		this.#dialogElem.style.setProperty("margin-top", ViewDialog.default.styleProps["margin-top"]);
 		this.parentElem.append(this.#dialogElem);
 		this.initListener();
 	}
@@ -665,8 +668,8 @@ export class ViewDialog extends AbstractView {
 
 	initDragging() {
 		this.#dragHandler = new DialogDragHandler(this, this.header.domElem);
-		this.#dragHandler.setTriggerFilter((evt) => {
-			if (evt.target.classList.contains("dlg-header-action-icon")) { return true; }
+		this.#dragHandler.setTriggerFilter((evt: Event) => {
+			return (evt.target as HTMLElement).classList.contains("dlg-header-action-icon");
 		});
 		this.dialog().classList.add("draggable-dialog");
 		this.#dragHandler.enabled = true;
@@ -678,13 +681,13 @@ export class ViewDialog extends AbstractView {
 		this.#resizeHandler.enabled = true;
 	}
 
-	setTitle(title) {
+	setTitle(title: string) {
 		this.title.html(title);
 		return this;
 	}
 
-	showRunning(flag = null) {
-		const classList = this.progressBar.domElem.firstElementChild.classList;
+	showRunning(flag: boolean | null = null) {
+		const classList = (this.progressBar.domElem.firstElementChild as HTMLElement).classList;
 		const clazz = "progress-showWorking";
 		if (flag && !classList.contains(clazz)) {
 			classList.add(clazz);
@@ -693,12 +696,12 @@ export class ViewDialog extends AbstractView {
 		}
 	}
 
-	setDisabled(flag, cursor = null) {
+	setDisabled(flag: boolean, cursor: string | null = null) {
 		this.setDisplay(this.domElem.disableOverlay, flag);
 		if (cursor) { this.disableOverlay.domElem.style.cursor = cursor; }
 	}
 
-	dialog() {
+	dialog(): HTMLDialogElement {
 		return this.#dialogElem;
 	}
 
@@ -717,7 +720,7 @@ export class ViewDialog extends AbstractView {
 		//to be overwritten
 	}
 
-	#open(cb, modal = false) {
+	#open(cb: ((dlg: this) => void) | null, modal = false) {
 
 		this.positionDialog();
 		this.beforeOpen();
@@ -731,7 +734,7 @@ export class ViewDialog extends AbstractView {
 		}
 		if (this.#dragHandler) {
 			if (!this.#lastPosition) {
-				this.#dragHandler.setStartPosition(0, this.dialog().style["margin-top"]);
+				this.#dragHandler.setStartPosition(0, this.dialog().style.marginTop);
 			}
 			this.#dragHandler.startWorking();
 		}
@@ -744,11 +747,11 @@ export class ViewDialog extends AbstractView {
 		return this.dialog().open;
 	}
 
-	open(cb) {
+	open(cb: ((dlg: this) => void) | null) {
 		this.#open(cb, false);
 	}
 
-	openModal(cb) {
+	openModal(cb: ((dlg: this) => void) | null) {
 		this.#open(cb, true);
 	}
 
@@ -765,9 +768,9 @@ export class ViewDialog extends AbstractView {
  */
 export class StandardDialog extends ViewDialog {
 
-	inputField;
+	inputField!: HTMLInputElement;
 
-	constructor(parent) {
+	constructor(parent: HTMLElement) {
 		super();
 		this.parentElem = parent;
 		this.initialize();
@@ -784,17 +787,17 @@ export class StandardDialog extends ViewDialog {
 		this.viewArea.class(["standard-dialog-content-area"])
 		this.commandArea.class(["standard-dialog-command-area"])
 			.addButton({ varid: "pbOk", text: "Ok", clazzes: "std-dlg-button" })
-			.addButton({ varid: "pbCancel", text: "Cancel", clazzes: "std-dlg-button" }, (cancel) => { cancel.domElem.autofocus = true; });
+			.addButton({ varid: "pbCancel", text: "Cancel", clazzes: "std-dlg-button" }, (cancel: UIComp) => { cancel.domElem.autofocus = true; });
 
 		this.initDragging();
 
 		this.isInitialized = true;
 	}
 
-	#setupStandardActions(cb, isInput = false) {
+	#setupStandardActions<T>(cb: (value: T | null) => void, isInput = false) {
 		onClicked(this.pbOk, () => {
 			this.close();
-			cb(isInput ? this.inputField.value : true);
+			cb((isInput ? this.inputField.value : true) as T);
 		});
 
 		onClicked(this.pbCancel, () => {
@@ -815,7 +818,7 @@ export class StandardDialog extends ViewDialog {
 	openConfirmation(msg: DialogMessage, cb: (value: boolean) => void) {
 		this.pbOk.html("Yes");
 		this.pbCancel.html("No");
-		this.#setupStandardActions(cb);
+		this.#setupStandardActions<boolean>((value) => cb(value ?? false));
 
 		this.setTitle(msg.title ? msg.title : "Confirmation required");
 		this.viewArea.html(`<p>${msg.message}</p>`);
@@ -830,12 +833,12 @@ export class StandardDialog extends ViewDialog {
 
 		const value = msg.data ? msg.data : "";
 
-		this.#setupStandardActions(cb, true);
+		this.#setupStandardActions<string>((value) => cb(value ?? ""), true);
 		this.setTitle(msg.title ? msg.title : "Input");
 		this.viewArea.html(`<p class="std-inputdlg-text">${msg.message}</p>
 			<input type="text" id="${inputId}" class="std-dlg-textfield" value="${value}">`);
 
-		this.inputField = findChildOf(this.dialog(), inputId);
+		this.inputField = findChildOf(this.dialog(), inputId) as HTMLInputElement;
 
 		this.openModal(null);
 		this.inputField.focus();
@@ -846,25 +849,25 @@ export class StandardDialog extends ViewDialog {
 /**
  */
 export class WorkViewTableHandler {
-	tableElem;
-	tableBody;
-	tableData = null;
+	tableElem: HTMLTableElement;
+	tableBody: HTMLTableSectionElement;
+	tableData: TableData | null = null;
 	ascOrder = false;
-	sortIcon;
+	sortIcon: ActionIcon;
 
 
-	constructor(tableElem) {
+	constructor(tableElem: HTMLTableElement) {
 		this.tableElem = tableElem;
-		this.tableBody = this.tableElem.querySelector('tbody');
+		this.tableBody = this.tableElem.querySelector('tbody') as HTMLTableSectionElement;
 
 		this.sortIcon = this.getHeader(0).getElementsByTagName("a-icon")[0];
 	}
 
-	getHeader(idx) {
+	getHeader(idx: number) {
 		return this.tableElem.getElementsByTagName("th")[idx];
 	}
 
-	setData(tableData) {
+	setData(tableData: TableData) {
 		this.clearData();
 		this.tableData = tableData;
 
@@ -877,8 +880,8 @@ export class WorkViewTableHandler {
 				col.className = "wkv";
 				col.innerHTML = colVal;
 				(col as JSObject).value = colKey;
-				onClicked(col, (evt) => { this.tableData.cellClick(rowKey, colKey, evt); });
-				onDblClicked(col, (evt) => { this.tableData.cellDblClick(rowKey, colKey, evt); });
+				onClicked(col, (evt) => { this.tableData?.cellClick(rowKey, colKey, evt); });
+				onDblClicked(col, (evt) => { this.tableData?.cellDblClick(rowKey, colKey, evt); });
 				row.appendChild(col);
 			});
 
@@ -891,13 +894,13 @@ export class WorkViewTableHandler {
 		this.tableBody.replaceChildren();
 	}
 
-	sortByColumn(colIdx) {
+	sortByColumn(colIdx: number) {
 		this.ascOrder = !this.ascOrder;
 		const rows = Array.from(this.tableBody.querySelectorAll('tr'));
 
 		rows.sort((rowA: HTMLElement, rowB: HTMLElement) => {
-			const cellA = rowA.querySelectorAll('td')[colIdx].textContent.trim();
-			const cellB = rowB.querySelectorAll('td')[colIdx].textContent.trim();
+			const cellA = (rowA.querySelectorAll('td')[colIdx].textContent ?? "").trim();
+			const cellB = (rowB.querySelectorAll('td')[colIdx].textContent ?? "").trim();
 
 			return this.ascOrder ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
 		});
@@ -910,12 +913,12 @@ export class WorkViewTableHandler {
 		this.sortIcon.switch();
 	}
 
-	filterRows(colIdx, filterText) {
+	filterRows(colIdx: number, filterText: string) {
 		const rows = Array.from(this.tableBody.querySelectorAll('tr'));
 		const filter = filterText.toLowerCase();
 
 		rows.forEach((row: HTMLElement) => {
-			const cellVal = row.querySelectorAll('td')[colIdx].textContent;
+			const cellVal = row.querySelectorAll('td')[colIdx].textContent ?? "";
 			row.style.display = cellVal.toLowerCase().includes(filter) ? "" : "none";
 		});
 	}
@@ -935,12 +938,12 @@ export class WorkViewTableHandler {
 			ctrl.type = "checkbox";
 			ctrl.checked = props.booleanValue;
 			ctrl.style.width = "20px";
-			onClicked(ctrl, () => { ctrl.value = typeUtil.stringFromBoolean(ctrl.checked) });
+			onClicked(ctrl, () => { ctrl.value = typeUtil.stringFromBoolean(ctrl.checked) ?? "" });
 		} else if (props.datalist?.length > 0) {
 			let item = null;
 			const dataElem = document.createElement("datalist");
 			dataElem.id = newUIId();
-			props.datalist.forEach(entry => {
+			props.datalist.forEach((entry: string) => {
 				item = document.createElement("option");
 				item.value = entry;
 				dataElem.append(item);
@@ -958,7 +961,7 @@ export class WorkViewTableHandler {
  *  - each row a map of columns (key:column)
  */
 export class TableData {
-	rows: Map<string, Map<string, HTMLTableRowElement>>;
+	rows: Map<string, Map<string, string>>;
 	cellClick: (rowKey: string, colKey: string, evt: MouseEvent) => void;
 	cellDblClick: (rowKey: string, colKey: string, evt: MouseEvent) => void;
 
@@ -968,7 +971,7 @@ export class TableData {
 		this.cellDblClick = () => { };
 	}
 
-	addRow(key, columns) {
+	addRow(key: string, columns: Map<string, string>) {
 		this.rows.set(key, columns);
 	}
 }
@@ -992,7 +995,7 @@ export class SplitBarHandler {
 		height: 2000
 	};
 
-	splitter;
+	splitter: HTMLElement;
 
 	compBefore = SplitBarHandler.#dummyElem;
 	compAfter = SplitBarHandler.#dummyElem;
@@ -1001,19 +1004,19 @@ export class SplitBarHandler {
 	workClass = "splitter-working";
 	typeClass = "vsplit";
 
-	beforeSik = { pctWidth: null, pctHeight: null };
-	afterSik = { pctWidth: null, pctHeight: null };
-	hasPercentValues;
+	beforeSik: { pctWidth: string | null, pctHeight: string | null } = { pctWidth: null, pctHeight: null };
+	afterSik: { pctWidth: string | null, pctHeight: string | null } = { pctWidth: null, pctHeight: null };
+	hasPercentValues = false;
 
 	isChanged = false;
-	resizeListener = null;
+	resizeListener: (() => void) | null = null;
 
-	clickPoint;
+	clickPoint!: { evt: MouseEvent, offsetLeft: number, offsetTop: number, beforeWidth: number, beforeHeight: number, afterHeight: number, afterWidth: number };
 
 	barrierActionBefore: (handler: SplitBarHandler, value: number) => boolean = () => { return false; };
 	barrierActionAfter: (handler: SplitBarHandler, value: number) => boolean = () => { return false; };
 
-	constructor(splitter) {
+	constructor(splitter: HTMLElement) {
 		this.splitter = splitter;
 	}
 
@@ -1025,7 +1028,7 @@ export class SplitBarHandler {
 		this.afterSik.pctWidth = this.compAfter.style.width.endsWith("%") ? this.compAfter.style.width : null;
 		this.afterSik.pctHeight = this.compAfter.style.height.endsWith("%") ? this.compAfter.style.height : null;
 
-		this.hasPercentValues = (this.beforeSik.pctWidth || this.beforeSik.pctHeight || this.afterSik.pctWidth || this.afterSik.pctHeight);
+		this.hasPercentValues = !!(this.beforeSik.pctWidth || this.beforeSik.pctHeight || this.afterSik.pctWidth || this.afterSik.pctHeight);
 
 		if (this.hasPercentValues) {
 			this.resizeListener = () => {
@@ -1040,22 +1043,22 @@ export class SplitBarHandler {
 		return this;
 	}
 
-	setCompBefore(elem) {
+	setCompBefore(elem: HTMLElement) {
 		this.compBefore = elem;
 		return this;
 	}
 
-	setCompAfter(elem) {
+	setCompAfter(elem: HTMLElement) {
 		this.compAfter = elem;
 		return this;
 	}
 
-	setBarrierActionBefore(cb) {
+	setBarrierActionBefore(cb: (handler: SplitBarHandler, value: number) => boolean) {
 		this.barrierActionBefore = cb;
 		return this;
 	}
 
-	setBarrierActionAfter(cb) {
+	setBarrierActionAfter(cb: (handler: SplitBarHandler, value: number) => boolean) {
 		this.barrierActionAfter = cb;
 		return this;
 	}
@@ -1066,7 +1069,7 @@ export class SplitBarHandler {
 		return this;
 	}
 
-	#setOverlayActive(flag) {
+	#setOverlayActive(flag: boolean) {
 		//avoid cursor flicker with overlay
 		if (flag) {
 			SplitBarHandler.#dragOverlay.classList.add(this.typeClass);
@@ -1095,7 +1098,7 @@ export class SplitBarHandler {
 		}
 	}
 
-	#onDragStart(evt) {
+	#onDragStart(evt: MouseEvent) {
 		this.splitter.classList.toggle(this.workClass);
 
 		this.#setOverlayActive(true);
@@ -1131,7 +1134,7 @@ export class SplitBarHandler {
 		}
 	}
 
-	#doDrag(evt) {
+	#doDrag(evt: MouseEvent) {
 		this.isChanged = true;
 		const delta = {
 			x: evt.clientX - this.clickPoint.evt.clientX,
@@ -1145,7 +1148,7 @@ export class SplitBarHandler {
 		}
 	}
 
-	#doVDrag(delta) {
+	#doVDrag(delta: { x: number, y: number }) {
 		delta.x = Math.min(Math.max(delta.x, -this.clickPoint.beforeWidth),
 			this.clickPoint.afterWidth);
 
@@ -1159,7 +1162,7 @@ export class SplitBarHandler {
 		this.compAfter.style.width = (this.clickPoint.afterWidth - delta.x) + "px";
 	}
 
-	#doHDrag(delta) {
+	#doHDrag(delta: { x: number, y: number }) {
 		delta.y = Math.min(Math.max(delta.y, -this.clickPoint.beforeHeight),
 			this.clickPoint.afterHeight);
 
@@ -1181,9 +1184,9 @@ export class SplitBarHandler {
 /**
  */
 export class DialogDragHandler {
-	#viewDialog;
-	#dlg;
-	#handleElem;
+	#viewDialog?: ViewDialog;
+	#dlg: HTMLElement;
+	#handleElem: HTMLElement;
 	#active = false;
 	#start = { x: 0, y: 0 };
 	#startPos = { left: 0, top: 0 };
@@ -1191,7 +1194,7 @@ export class DialogDragHandler {
 	#triggerFilter: (evt: PointerEvent) => boolean = () => false;
 	enabled = false;
 
-	constructor(dialog, handleElem) {
+	constructor(dialog: ViewDialog | HTMLElement, handleElem: HTMLElement) {
 		if (dialog instanceof ViewDialog) {
 			this.#viewDialog = dialog;
 			this.#dlg = this.#viewDialog.dialog();
@@ -1215,7 +1218,7 @@ export class DialogDragHandler {
 		window.removeEventListener('resize', this.#onWindowResize);
 	}
 
-	#stopDragging(evt) {
+	#stopDragging(evt: PointerEvent | null) {
 		if (!this.enabled) { return; }
 		this.#active = false;
 		if (evt) {
@@ -1228,9 +1231,9 @@ export class DialogDragHandler {
 		this.#viewDialog?.capturePosition();
 	}
 
-	setStartPosition(leftVal, topVal) {
-		leftVal = typeUtil.isString(leftVal) ? Number.parseInt(leftVal, 10) : leftVal;
-		topVal = typeUtil.isString(topVal) ? Number.parseInt(topVal, 10) : topVal;
+	setStartPosition(leftVal: number | string, topVal: number | string) {
+		leftVal = typeUtil.isString(leftVal) ? Number.parseInt(leftVal as string, 10) : leftVal as number;
+		topVal = typeUtil.isString(topVal) ? Number.parseInt(topVal as string, 10) : topVal as number;
 
 		//center by default
 		const left = leftVal == 0 ? Math.max(0, (window.innerWidth - this.#dlg.offsetWidth) / 2) : leftVal;
@@ -1241,12 +1244,12 @@ export class DialogDragHandler {
 		return this;
 	}
 
-	setTriggerFilter(cb) {
+	setTriggerFilter(cb: (evt: PointerEvent) => boolean) {
 		this.#triggerFilter = cb;
 		return this;
 	}
 
-	#onPointerDown = (evt) => {
+	#onPointerDown = (evt: PointerEvent) => {
 		if (this.#triggerFilter(evt)) return;
 		this.#handleElem.setPointerCapture(evt.pointerId);
 		this.#active = true;
@@ -1259,11 +1262,11 @@ export class DialogDragHandler {
 		document.addEventListener('pointercancel', this.#onPointerUp);
 	};
 
-	#onPointerUp = (evt) => {
+	#onPointerUp = (evt: PointerEvent) => {
 		this.#stopDragging(evt);
 	};
 
-	#onPointerMove = (evt) => {
+	#onPointerMove = (evt: PointerEvent) => {
 		if (!this.#active) return;
 		evt.preventDefault();
 		const dx = evt.clientX - this.#start.x;
@@ -1293,8 +1296,8 @@ export class DialogDragHandler {
 /**
  */
 export class DialogResizeHandler {
-	#dlg;
-	#handleElem;
+	#dlg: HTMLElement;
+	#handleElem: HTMLElement;
 
 	enabled = false;
 
@@ -1304,10 +1307,10 @@ export class DialogResizeHandler {
 	startHeight = 0;
 	startLeft = 0;
 	startTop = 0;
-	cfX = null;
-	cfY = null;
+	cfX = 0;
+	cfY = 0;
 
-	constructor(dialog, handleElem) {
+	constructor(dialog: HTMLElement, handleElem: HTMLElement) {
 		this.#dlg = dialog;
 		this.#handleElem = handleElem;
 	}
@@ -1323,7 +1326,7 @@ export class DialogResizeHandler {
 		this.#handleElem.removeEventListener('pointerdown', this.#onPointerDown);
 	}
 
-	#stopResize = (evt) => {
+	#stopResize = (evt: PointerEvent | null) => {
 		if (!this.enabled) { return; }
 		if (evt) {
 			this.#handleElem.releasePointerCapture(evt.pointerId);
@@ -1333,11 +1336,11 @@ export class DialogResizeHandler {
 		this.#handleElem.removeEventListener('pointercancel', this.#stopResize);
 	}
 
-	#onPointerDown = (evt) => {
+	#onPointerDown = (evt: PointerEvent) => {
 		const rect = this.#dlg.getBoundingClientRect();
 
-		this.startX = rect.right + this?.cfX || 0;
-		this.startY = rect.bottom + this?.cfY || 0;
+		this.startX = rect.right + this.cfX || 0;
+		this.startY = rect.bottom + this.cfY || 0;
 		this.startWidth = rect.width;
 		this.startHeight = rect.height;
 		this.startLeft = rect.left;
@@ -1355,7 +1358,7 @@ export class DialogResizeHandler {
 
 	}
 
-	#onResize = (evt) => {
+	#onResize = (evt: PointerEvent) => {
 		const dx = evt.clientX - this.startX;
 		const dy = evt.clientY - this.startY;
 

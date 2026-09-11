@@ -78,8 +78,8 @@ export class ViewSource {
 	#html: string | null = null;
 	#htmlLoadListener: (viewSrc: ViewSource) => void = () => { };
 
-	constructor(file: string) {
-		this.#file = file;
+	constructor(file: string | null) {
+		this.#file = file ?? "";
 	}
 
 	setHtmlLoadListener(cb: (viewSrc: ViewSource) => void) {
