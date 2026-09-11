@@ -21,7 +21,7 @@ export class WsoCommonMessage {
 	error = "";
 	//payload
 	bodydata = "";
-	attachments = {};
+	attachments: JSObject = {};
 
 	constructor(reference: string) {
 		this.reference = reference;
@@ -75,7 +75,7 @@ export class CommandDef {
  */
 export class ViewSource {
 	#file = "";
-	#html = null;
+	#html: string | null = null;
 	#htmlLoadListener: (viewSrc: ViewSource) => void = () => { };
 
 	constructor(file: string) {

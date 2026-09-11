@@ -68,7 +68,7 @@ class Properties {
     webSocketUrlRoot() {
         return this.get("webSocketUrlRoot", "/wsoapi");
     }
-    webBackendServerUrl(defaultVal = null) {
+    webBackendServerUrl(defaultVal: string | null = null) {
         return this.get("webBackendServerUrl", defaultVal);
     }
 

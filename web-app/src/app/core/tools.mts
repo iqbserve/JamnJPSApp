@@ -7,6 +7,11 @@ import { DataFile } from './data-classes.mjs';
 /* Types */
 import type { DynamicFunction, FncArgs } from 'types/commons';
 
+//minimal shape for the still non-standard/experimental File System Access API, not part of lib.dom.d.ts
+type FileSystemWritableStream = { write: (data: string) => Promise<void>; close: () => Promise<void> };
+type FileSystemFileHandleLike = { createWritable: () => Promise<FileSystemWritableStream> };
+type ShowSaveFilePicker = (options: { suggestedName: string; types: { description: string; accept: Record<string, string[]> }[] }) => Promise<FileSystemFileHandleLike>;
+
 /**
  * Some helper functions and constants
  */
@@ -20,10 +25,10 @@ export const NL = "\n";
 export class LazyFunction implements DynamicFunction {
 	#moduleName = "";
 	#functionName = "";
-	#functionArgs = null;
+	#functionArgs: FncArgs | null = null;
 	#returnOnly = false;
 
-	constructor(module: string, fncName: string, fncArgs: FncArgs = null) {
+	constructor(module: string, fncName: string, fncArgs: FncArgs | null = null) {
 		this.#moduleName = module;
 		this.#functionName = fncName;
 		this.#functionArgs = fncArgs;
@@ -115,7 +120,7 @@ export function decodeRequestParameter(href: string): Map<string, string> {
 }
 
 export function styleFloat(elem: Element, prop: string): number {
-	return Number.parseFloat(window.getComputedStyle(elem)[prop]) || 0;
+	return Number.parseFloat(window.getComputedStyle(elem)[prop as keyof CSSStyleDeclaration] as string) || 0;
 }
 
 /**
@@ -187,7 +192,8 @@ export const fileUtil = {
 	/**
 	 */
 	saveToFileFapi: (fileName: string, text: string) => {
-		window["showSaveFilePicker"]({
+		const showSaveFilePicker = (window as unknown as { showSaveFilePicker: ShowSaveFilePicker }).showSaveFilePicker;
+		showSaveFilePicker({
 			suggestedName: fileName,
 			types: [{
 				description: "Text file",
@@ -197,7 +203,7 @@ export const fileUtil = {
 			const file = await handler.createWritable();
 			await file.write(text);
 			await file.close();
-		}).catch(err => Logger.error(err));
+		}).catch((err: unknown) => Logger.error(err));
 	},
 
 	/**
@@ -242,7 +248,8 @@ export class FileDataReader {
 	#dataCb: (dataFile: DataFile) => void;
 	#fsapi = false;
 
-	#fileInput: HTMLInputElement;
+	//only assigned in non-fsapi mode, guarded via #fsapi
+	#fileInput!: HTMLInputElement;
 
 	constructor(fileTypes: string, dataCb: (dataFile: DataFile) => void, fsapi = false) {
 		this.#fileTypes = fileTypes;
@@ -255,22 +262,21 @@ export class FileDataReader {
 			this.#fileInput.accept = this.#fileTypes;
 			this.#fileInput.addEventListener("change", (evt) => {
 				const input = evt.target as HTMLInputElement;
-				const file = input.files.length > 0 ? input.files[0] : null;
+				const file = input.files && input.files.length > 0 ? input.files[0] : null;
 				this.#getFileDataFrom(file);
 			});
 		}
 	}
 
-	#getFileDataFrom(file: File) {
-		let dataFile: DataFile = null;
-		if (file) {
-			dataFile = new DataFile(file.name, new Date(file.lastModified).toLocaleTimeString(), null);
-			file.text().then((textData) => {
-				dataFile.data = textData;
-				this.#fileInput.value = "";
-				this.#dataCb(dataFile);
-			});
-		}
+	#getFileDataFrom(file: File | null) {
+		if (!file) { return; }
+
+		const dataFile = new DataFile(file.name, new Date(file.lastModified).toLocaleTimeString(), null);
+		file.text().then((textData) => {
+			dataFile.data = textData;
+			this.#fileInput.value = "";
+			this.#dataCb(dataFile);
+		});
 	}
 
 	chooseFile() {
