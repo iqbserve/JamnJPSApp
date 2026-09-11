@@ -16,22 +16,30 @@ import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
  */
 class SystemInfoView extends WorkView {
 
-	leftContainer: HTMLElement;
-	appBoxElem = {
-		tfName: null as HTMLInputElement,
-		tfVersion: null as HTMLInputElement,
-		tfDescription: null as HTMLInputElement,
-		lnkReadMore: null as HTMLLinkElement,
+	leftContainer!: HTMLElement;
+	appBoxElem: {
+		tfName: HTMLInputElement | null,
+		tfVersion: HTMLInputElement | null,
+		tfDescription: HTMLInputElement | null,
+		lnkReadMore: HTMLLinkElement | null,
+	} = {
+		tfName: null,
+		tfVersion: null,
+		tfDescription: null,
+		lnkReadMore: null,
 	};
 
-	configBoxElem = {
-		icoSave: null as HTMLElement,
-		icoRedo: null as HTMLElement,
+	configBoxElem: {
+		icoSave: HTMLElement | null,
+		icoRedo: HTMLElement | null,
+	} = {
+		icoSave: null,
+		icoRedo: null,
 	};
-	configTable;
+	configTable!: WorkViewTableHandler;
 
 	needsViewDataRefresh = true;
-	boxWidth: "720px";
+	boxWidth = "720px";
 
 	constructor(id: string) {
 		super(id, null);
@@ -57,7 +65,7 @@ class SystemInfoView extends WorkView {
 	open() {
 		super.open();
 
-		getInfos((data) => {
+		getInfos((data: SystemInfoData) => {
 			this.writeDataToView(data);
 			this.setVisible(true);
 		});
@@ -65,7 +73,7 @@ class SystemInfoView extends WorkView {
 
 	/**
 	 */
-	initWorkarea(builder) {
+	initWorkarea(builder: UIBuilder) {
 
 		builder.setElementCollection(this);
 		builder.newUICompFor(this.viewWorkarea)
@@ -82,9 +90,9 @@ class SystemInfoView extends WorkView {
 
 	/**
 	 */
-	initAppBox(builder) {
+	initAppBox(builder: UIBuilder) {
 
-		let compSet;
+		let compSet!: HTMLElement;
 		builder.setElementCollection(this.appBoxElem);
 
 		builder.newUICompFor(this.leftContainer)
@@ -119,9 +127,9 @@ class SystemInfoView extends WorkView {
 
 	/**
 	 */
-	initConfigBox(builder) {
+	initConfigBox(builder: UIBuilder) {
 
-		let fieldset: UIComp;
+		let fieldset!: UIComp;
 		builder.setElementCollection(this.configBoxElem);
 
 		builder.newUICompFor(this.leftContainer)
@@ -134,7 +142,7 @@ class SystemInfoView extends WorkView {
 			comp.style({ "flex-direction": "row-reverse", "margin-bottom": "10px", "gap": "15px" })
 				.addActionIcon({ varid: "icoSave", iconName: Icons.save(), title: "Save current changes" }, (saveIcon) => {
 					onClicked(saveIcon, () => {
-						updateInfos(getUpdateRequest(), (response) => {
+						updateInfos(getUpdateRequest(), (response: { status: string }) => {
 							if (response?.status === "ok") {
 								clearConfigChanges()
 								Logger.info("App-Info update done");
@@ -162,26 +170,26 @@ class SystemInfoView extends WorkView {
 
 	/**
 	 */
-	setActionsEnabled(flag) {
+	setActionsEnabled(flag: boolean) {
 		const ctrls = [this.configBoxElem.icoSave, this.configBoxElem.icoRedo];
 		const styleProps = flag ? { "pointer-events": "all", color: "" } : { "pointer-events": "none", color: "var(--border-gray)" };
 
-		ctrls.forEach((ctrl) => UIBuilder.setStyleOf(ctrl, styleProps));
+		ctrls.forEach((ctrl) => { if (ctrl) { UIBuilder.setStyleOf(ctrl, styleProps); } });
 	}
 
 	/**
 	 */
-	writeDataToView(data) {
+	writeDataToView(data: SystemInfoData) {
 		if (this.needsViewDataRefresh) {
 			clearConfigChanges();
 
 			const sysProps = data.sysProps;
 			const buildProps = data.buildProps;
 
-			this.appBoxElem.tfName.value = buildProps["appname"];
-			this.appBoxElem.tfVersion.value = `${buildProps["version"]} - Build [${buildProps["build.date"]} UTC]`;
-			this.appBoxElem.tfDescription.value = buildProps["description"];
-			this.appBoxElem.lnkReadMore.href = buildProps["readme.url"];
+			if (this.appBoxElem.tfName) { this.appBoxElem.tfName.value = buildProps["appname"]; }
+			if (this.appBoxElem.tfVersion) { this.appBoxElem.tfVersion.value = `${buildProps["version"]} - Build [${buildProps["build.date"]} UTC]`; }
+			if (this.appBoxElem.tfDescription) { this.appBoxElem.tfDescription.value = buildProps["description"]; }
+			if (this.appBoxElem.lnkReadMore) { this.appBoxElem.lnkReadMore.href = buildProps["readme.url"]; }
 
 			//create+build a table data object
 			const tableData = new TableData();
@@ -203,7 +211,8 @@ class SystemInfoView extends WorkView {
 				if (!colKey.startsWith("key:")) {
 					//get the origin data from the data object (model)
 					const dataRow = tableData.rows.get(rowKey);
-					const dataValue = dataRow.get(colKey);
+					if (!dataRow) { return; }
+					const dataValue = dataRow.get(colKey) ?? "";
 
 					//create+handle a simple cell input field
 					const cellElem = evt.currentTarget as HTMLElement;
@@ -213,7 +222,7 @@ class SystemInfoView extends WorkView {
 					cellElem.innerHTML = '';
 
 					const inputFieldProps = { booleanValue: typeUtil.booleanFromString(orgCellValue) };
-					const cellInput = this.configTable.newCellInputField(inputFieldProps);
+					const cellInput = this.configTable.newCellInputField(inputFieldProps) as HTMLInputElement & { comp: HTMLElement };
 					cellInput.value = orgCellValue;
 
 					cellInput.onblur = () => {
@@ -226,7 +235,7 @@ class SystemInfoView extends WorkView {
 						ckeckConfigChange(colKey, dataValue, cellElem);
 					};
 
-					cellInput.onkeydown = (evt) => {
+					cellInput.onkeydown = (evt: KeyboardEvent) => {
 						if (KEY.isEnter(evt)) {
 							cellInput.blur();
 						} else if (KEY.isEscape(evt)) {
@@ -246,7 +255,7 @@ class SystemInfoView extends WorkView {
 
 			onClicked(this.configTable.getHeader(0).getElementsByTagName("a-icon")[0], () => {
 				this.configTable.sortByColumn(0);
-				this.configTable.toggleColSort(0);
+				this.configTable.toggleColSort();
 			});
 
 			onKeyup(this.configTable.getHeader(0).getElementsByTagName("input")[0], (evt) => {
@@ -266,17 +275,22 @@ export function getView() {
 	return viewInstance;
 }
 
-const configChanges = new Map();
-let systemConfigData = null;
+const configChanges = new Map<string, { elem: HTMLElement, orgData: string }>();
+let systemConfigData: SystemInfoData | null = null;
+
+type SystemInfoData = {
+	sysProps: Record<string, string>,
+	buildProps: Record<string, string>,
+};
 
 /**
  */
-function getInfos(cb) {
+function getInfos(cb: (data: SystemInfoData) => void) {
 	if (systemConfigData) {
 		cb(systemConfigData);
 	} else {
-		Webapi.doGET(`${Webapi.service_get_wbappconfiguration}?name=system`, { parseJson: true }).then((data) => {
-			systemConfigData = data;
+		Webapi.doGET<SystemInfoData>(`${Webapi.service_get_wbappconfiguration}?name=system`, { parseJson: true }).then((data) => {
+			systemConfigData = data as SystemInfoData;
 			cb(systemConfigData);
 		});
 	}
@@ -284,7 +298,7 @@ function getInfos(cb) {
 
 /**
  */
-function updateInfos(request, cb) {
+function updateInfos(request: unknown, cb: (response: { status: string }) => void) {
 	//do nothing in demo sample
 	//let jsonRquest = JSON.stringify(request);
 	const response = { status: "ok" };
@@ -295,7 +309,7 @@ function updateInfos(request, cb) {
  */
 function clearConfigChanges(undo = false) {
 	configChanges.forEach((cell) => {
-		cell.elem.style["border-left"] = "";
+		cell.elem.style.setProperty("border-left", "");
 		if (undo) { cell.elem.innerHTML = cell.orgData; };
 	});
 	configChanges.clear();
@@ -304,15 +318,15 @@ function clearConfigChanges(undo = false) {
 
 /**
  */
-function ckeckConfigChange(key, orgVal, cellElem) {
+function ckeckConfigChange(key: string, orgVal: string, cellElem: HTMLElement) {
 	const currentVal = cellElem.innerHTML;
 
 	if (orgVal === currentVal) {
 		configChanges.delete(key);
-		cellElem.style["border-left"] = "";
+		cellElem.style.setProperty("border-left", "");
 	} else {
 		configChanges.set(key, { elem: cellElem, orgData: orgVal });
-		cellElem.style["border-left"] = "3px solid #32cd32";
+		cellElem.style.setProperty("border-left", "3px solid #32cd32");
 	}
 	getView().setActionsEnabled(configChanges.size !== 0);
 }
@@ -320,7 +334,7 @@ function ckeckConfigChange(key, orgVal, cellElem) {
 /**
  */
 function getUpdateRequest() {
-	const request = { "configChanges": {} };
+	const request: { configChanges: Record<string, string> } = { "configChanges": {} };
 	configChanges.forEach((cell, key) => {
 		request.configChanges[key] = cell.elem.innerHTML;
 	});
