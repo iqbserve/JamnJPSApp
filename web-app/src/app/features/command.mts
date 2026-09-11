@@ -4,6 +4,7 @@ import { NL, newSimpleId, asDurationString, FileDataReader } from 'core/tools.mj
 import { WsoCommonMessage, CommandDef, DataFile } from 'core/data-classes.mjs';
 import { WorkView, AttachmentHandler } from 'core/view-classes.mjs';
 import { UIBuilder, onClicked, onKeydown, KEY } from 'core/uibuilder.mjs';
+import type { UIComp } from 'core/uibuilder.mjs';
 import { WorkViewHtml } from 'core/view-templates.mjs';
 import * as Icons from 'core/icons.mjs';
 
@@ -31,18 +32,18 @@ import { SimpleCrudComp } from 'app/core/uicomponents.mjs';
  */
 export class CommandView extends WorkView {
 	//websocket communication ref id
-	wsoRefId: string;
+	wsoRefId!: string;
 
 	commandDef: CommandDef;
 	commandName: string;
-	runTime: number;
-	duration: number;
+	runTime!: number;
+	duration!: number;
 	namedArgs: { [key: string]: string; } = { none: "" };
-	ArgsComp: SimpleCrudComp;
+	ArgsComp!: SimpleCrudComp;
 
 	//input element for file dialog
-	attachmentFileReader: FileDataReader;
-	attachmentHandler: AttachmentHandler;
+	attachmentFileReader!: FileDataReader;
+	attachmentHandler!: AttachmentHandler;
 
 	//ui element collections
 	elem: JSObject = {};
@@ -52,9 +53,9 @@ export class CommandView extends WorkView {
 
 	//function to extend this general command view
 	//with feature specifics
-	viewExtender: DynamicFunction;
+	viewExtender: DynamicFunction | null;
 
-	constructor(id: string, cmdDef: CommandDef, viewExtender: DynamicFunction = null) {
+	constructor(id: string, cmdDef: CommandDef, viewExtender: DynamicFunction | null = null) {
 		super(id, null);
 		this.commandDef = cmdDef;
 		this.commandName = this.commandDef.command + " " + this.commandDef.script;
@@ -88,8 +89,8 @@ export class CommandView extends WorkView {
 		this.createWsoConnection();
 
 		//extend the view with feature specifics
-		this.viewExtender?.invoke((extend: ExtenderFunction<CommandView>) =>
-			extend(this)
+		this.viewExtender?.invoke((retVal: unknown) =>
+			(retVal as ExtenderFunction<CommandView>)(this)
 		);
 
 		this.isInitialized = true;
@@ -111,7 +112,7 @@ export class CommandView extends WorkView {
 			});
 
 		//create a fieldset as component container in the view workarea
-		let compSet;
+		let compSet!: HTMLElement;
 		builder.newUICompFor(this.viewWorkarea)
 			.addFieldset((comp) => {
 				comp.style({ "margin-top": "10px", "gap": "10px" });
@@ -137,7 +138,7 @@ export class CommandView extends WorkView {
 
 	/**
 	 */
-	createArgsSection(builder, target) {
+	createArgsSection(builder: UIBuilder, target: HTMLElement) {
 		const taTitle = (this.commandDef.options.args ? "Command arguments: -h for help" : "<no args>") + "\nStructured text like e.g. JSON must be wrapped in a <![CDATA[ structured text ]]> tag.";
 		const taPlaceholder = this.commandDef.options.args ? " -h + Enter for help" : "<no args>";
 		builder.newUIComp()
@@ -156,7 +157,7 @@ export class CommandView extends WorkView {
 				});
 			})
 			.add({ elemType: SimpleCrudComp.TagName }, (comp) => {
-				this.ArgsComp = comp.domElem.build(builder)
+				this.ArgsComp = (comp.domElem as SimpleCrudComp).build(builder)
 					.setItems(Object.getOwnPropertyNames(this.namedArgs))
 					.setStyle({ "margin-left": "20px", "gap": "5px", "align-items": "end" })
 					.setBarPosition("bottom")
@@ -181,7 +182,7 @@ export class CommandView extends WorkView {
 
 	/**
 	 */
-	createAttachmentsSection(builder, target) {
+	createAttachmentsSection(builder: UIBuilder, target: HTMLElement) {
 		builder.newUIComp()
 			.style({ "align-items": "flex-start" })
 			.addLabel({ text: "Attachments:", elemType: "label-text" })
@@ -203,8 +204,8 @@ export class CommandView extends WorkView {
 
 	/**
 	 */
-	createOutputSection(builder, target) {
-		let lbOutput;
+	createOutputSection(builder: UIBuilder, target: HTMLElement) {
+		let lbOutput!: UIComp;
 
 		builder.newUIComp()
 			.style({ "flex-direction": "column", width: "fit-content", "align-items": "flex-start" })
@@ -268,10 +269,10 @@ export class CommandView extends WorkView {
 				} else {
 					this.addOutputLine(wsoMsg.bodydata);
 				}
-			} else if (wsoMsg.hasStatusError && wsoMsg.error.includes("connection")) {
+			} else if (wsoMsg.hasStatusError() && wsoMsg.error.includes("connection")) {
 				this.addOutputLine(NL + wsoMsg.error);
 				this.setRunning(false);
-			} else if (wsoMsg.hasStatusError && wsoMsg.hasReference("server.global")) {
+			} else if (wsoMsg.hasStatusError() && wsoMsg.hasReference("server.global")) {
 				this.addOutputLine(NL + "WebSocket Error [" + wsoMsg.error + "] the central connection was closed.");
 				this.setRunning(false);
 			}
@@ -340,7 +341,7 @@ export class CommandView extends WorkView {
 
 	/**
 	 */
-	setRunning(flag) {
+	setRunning(flag: boolean) {
 		super.setRunning(flag);
 
 		this.elem.pbRun.disabled = flag;
@@ -373,7 +374,7 @@ export class CommandView extends WorkView {
 
 	/**
 	 */
-	addOutputLine(line) {
+	addOutputLine(line: string) {
 		this.elem.taOutput.value += line + NL;
 		this.elem.taOutput.scrollTop = this.elem.taOutput.scrollHeight;
 	}
@@ -389,7 +390,7 @@ export class CommandView extends WorkView {
 
 	/**
 	 */
-	getDataListObjFor(name) {
+	getDataListObjFor(name: string) {
 		return this.uiobj[this.elem[name].list.id];
 	}
 
@@ -463,7 +464,7 @@ export function getView(args: FncArgs): CommandView {
 	const id: string = args[0] as string;
 	const def: CommandDef = args[1] as CommandDef;
 	if (instances.has(id)) {
-		return instances.get(id);
+		return instances.get(id) as CommandView;
 	} else {
 		const view = new CommandView(id, def, args?.[2] as DynamicFunction);
 		instances.set(id, view);
