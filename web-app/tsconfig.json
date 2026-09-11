@@ -5,6 +5,7 @@
         "moduleResolution": "bundler",
         "allowJs": true,
         "checkJs": false,
+        "strict": true,
         "outDir": "target/classes/http",
         "rootDir": "./src",
         "paths": {
