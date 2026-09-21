@@ -4,7 +4,7 @@ import type { JSObject, PropertiesObject } from "types/commons";
 
 /* Types */
 export type SBarItemDef = { text: string, feature: string };
-export type SBarTopicDef = { text: string, icon: string, items: SBarItemDef[] };
+export type SBarTopicDef = { text: string, icon?: string, items: SBarItemDef[] };
 type workpanelItem = { text: string, icon: string, feature: string };
 
 /**
@@ -16,6 +16,7 @@ export class WbAppConfig {
     #systemInfo: PropertiesObject = {};
     #topicList: SBarTopicDef[] = [];
     #workpanelItems: workpanelItem[] = [];
+    #topicIcons: PropertiesObject = {};
 
     constructor(json: string) {
         const config = JSON.parse(json);
@@ -41,4 +42,19 @@ export class WbAppConfig {
         return this.#systemInfo;
     }
 
+    getTopicIcon(topic : string) : string {
+        return this.#topicIcons[topic] || "";
+    }
+
+    setTopicIcon(topic: string, icon: string) {
+        this.#topicIcons[topic] = icon;
+    }
+
+    buildTopicList() {
+        this.#topicList.forEach(topic => {
+            if (!topic.icon || topic.icon === "") {
+                topic.icon = this.getTopicIcon(topic.text);
+            }
+        });
+    }
 }

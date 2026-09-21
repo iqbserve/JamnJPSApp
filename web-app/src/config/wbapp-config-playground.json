@@ -1,12 +1,12 @@
 {
 	"properties": {
 		"showIntro": false,
-		"autoStartFeature": "toolsJSPlayground"
+		"autoStartFeature": "toolsJSPlayground",
+        "featureExcludeFilter": "^.+$"
 	},
 	"topicList": [
 		{
 			"text": "Tools",
-			"icon": "tools",
 			"items": [
 				{
 					"text": "JS Playground",

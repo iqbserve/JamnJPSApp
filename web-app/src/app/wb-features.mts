@@ -33,7 +33,7 @@ export function initExtensionFeatures(config: WbAppConfig, cb: () => void) {
     let moduleName = "/app/" + WbProperties.extensionFeaturesModule();
     import(moduleName).then((module) => {
         applyExtensionFeatures(config);
-        if(module && module.doCustomization) {
+        if (module && module.doCustomization) {
             module.doCustomization(config);
         }
         cb();
@@ -79,20 +79,27 @@ export function callFeature(name: string, viewManager: WorkbenchViewManager) {
  * Applies the extension features to the app configuration.
  */
 function applyExtensionFeatures(appConfig: WbAppConfig) {
+    const featureIncludeFilter = new RegExp(WbProperties.getFeatureIncludeFilter());
+    const featureExcludeFilter = new RegExp(WbProperties.getFeatureExcludeFilter());
+
     extensionSidebarItems.forEach((extItemDef) => {
         const topic = appConfig.getTopicList().find((topic) => topic.text === extItemDef.topic);
         //cast to config type
         const itemDef = { text: extItemDef.item, feature: extItemDef.feature } as SBarItemDef;
-        if (topic) {
-            topic.items.push(itemDef);
-        } else {
-            //create a new topic entry if it does not exist
-            let sbarTopic = {
-                text: extItemDef.topic,
-                icon: extItemDef.icon || "",
-                items: [itemDef]
-            };
-            appConfig.getTopicList().push(sbarTopic);
+        const featureName = extItemDef.feature ? extItemDef.feature : "";
+        if (featureIncludeFilter.test(featureName)
+            && !featureExcludeFilter.test(featureName)) {
+            if (topic) {
+                topic.items.push(itemDef);
+            } else {
+                //create a new topic entry if it does not exist
+                let sbarTopic = {
+                    text: extItemDef.topic,
+                    icon: extItemDef.icon || appConfig.getTopicIcon(extItemDef.topic),
+                    items: [itemDef]
+                };
+                appConfig.getTopicList().push(sbarTopic);
+            }
         }
     });
 }

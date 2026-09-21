@@ -18,6 +18,10 @@ class Properties {
         webBackendServerUrl: "",
         webAuthenticationEnabled: false,
         extensionFeaturesModule: "wb-extension-features.mjs",
+        //include all features by default
+        featureIncludeFilter: "^.+$",
+        //exclude no features by default
+        featureExcludeFilter: "^$",
 
         systemInfo: {},
         vcUrls: {
@@ -71,11 +75,15 @@ class Properties {
     webBackendServerUrl(defaultVal: string | null = null) {
         return this.get("webBackendServerUrl", defaultVal);
     }
-
     extensionFeaturesModule() {
         return this.get("extensionFeaturesModule", "/app/wb-extension-features.mjs");
     }
-
+    getFeatureIncludeFilter() {
+        return this.get("featureIncludeFilter", "^.+$");
+    }
+    getFeatureExcludeFilter() {
+        return this.get("featureExcludeFilter", "^$");
+    }
     isWebAuthenticationEnabled() {
         return this.get("webAuthenticationEnabled", false);
     }

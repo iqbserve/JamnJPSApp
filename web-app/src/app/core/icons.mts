@@ -16,7 +16,15 @@ export function getIconShapeClasses(name: string): string[] {
 }
 
 export function getIconClassString(name: string): string {
-	return (iconClasses as Record<string, ReturnType<typeof createClassDef>>)[name][0].join(" ");
+	if(isIconAvailable(name)) {
+		return (iconClasses as Record<string, ReturnType<typeof createClassDef>>)[name][0].join(" ");
+	}
+	return "";
+}
+
+
+function isIconAvailable(name: string): boolean {
+	return !!(iconClasses as Record<string, ReturnType<typeof createClassDef>>)[name];
 }
 
 /**

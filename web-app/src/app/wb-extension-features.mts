@@ -7,7 +7,7 @@ import { CommandDef } from 'core/data-classes.mjs';
 
 /**
  * <pre>
- **** This PLACEHOLDER module is the customizing interface for the web application.
+ **** This PLACEHOLDER module is a customizing interface for the web application.
  **** Do NOT edit - file is only a placeholder/template     
  **** Do NOT use or include this module anywhere
  * </pre>

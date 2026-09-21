@@ -5,7 +5,6 @@
 	"topicList": [
 		{
 			"text": "System",
-			"icon": "gi_system",
 			"items": [
 				{
 					"text": "Infos",
@@ -20,7 +19,6 @@
 		},
 		{
 			"text": "Tools",
-			"icon": "tools",
 			"items": [
 				{
 					"text": "JS Playground",
@@ -30,7 +28,6 @@
 		},
 		{
 			"text": "Server Commands",
-			"icon": "command",
 			"items": [
 			]
 		}

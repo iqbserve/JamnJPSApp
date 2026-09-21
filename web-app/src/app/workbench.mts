@@ -10,6 +10,8 @@ import { WsoCommonMessage } from 'app/core/data-classes.mjs';
 import { NotificationHandler, Notification, type NotificationListener } from 'core/notification.mjs';
 import { WbProperties } from 'config/wbapp-properties.mjs';
 import { WbAppConfig } from 'config/wbapp-config.mjs';
+import * as WbAppConfigCustomizer from 'config/wbapp-config-customizer.mjs';
+
 import * as Webapi from 'app/core/webapi.mjs';
 import * as Icons from 'core/icons.mjs';
 import { registerUIWebComponents, WbTitlebar, WbStatusline, WbSidebar } from 'app/core/uicomponents.mjs';
@@ -123,7 +125,7 @@ function startApp() {
 
 	initAuthentication((authenticated) => {
 		Webapi.doGET<string>(`${Webapi.service_get_wbappconfiguration}?name=${configName}`).then((config) => {
-			applyConfig(config, authenticated);
+			initAndApplyConfig(config, authenticated);
 			initApplicationFeatures();
 			initExtensionFeatures(appConfig, () => {
 
@@ -180,9 +182,20 @@ function initAuthentication(appStartCb: (authenticated: boolean) => void) {
 
 /**
  */
-function applyConfig(configJson: string, authenticated = false) {
+function initAndApplyConfig(configJson: string, authenticated = false) {
 	appConfig = new WbAppConfig(configJson);
 
+	//define the default app topic icons
+	appConfig.setTopicIcon("System", "gi_system");
+	appConfig.setTopicIcon("Tools", "tools");
+	appConfig.setTopicIcon("Server Commands", "command");
+
+	//extend the app configuration with custom definitions if an extender is available
+	WbAppConfigCustomizer["doCustomization"]?.(appConfig);
+
+	appConfig.buildTopicList();
+
+	//apply the config to the application
 	if (authenticated) {
 		appConfig.getProperties().showIntro = false;
 	}
