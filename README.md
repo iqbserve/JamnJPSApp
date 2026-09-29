@@ -35,6 +35,6 @@ localhost:9090
 ### Download a Snapshot Distribution
 
 From the IQBServer Artifact <a href="https://devrepo.iqbserve.de/" target="_blank">Development Repository</a> you can download a snapshot zip-file distribution. Just extract the zip file in a folder of your choice and call the run.cmd.
-
 <br>
+
 #### <a href="https://github.com/iqbserve/JamnJPSApp?tab=License-1-ov-file">Disclaimer</a>
