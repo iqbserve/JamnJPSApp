@@ -22,6 +22,8 @@
 **/tooling
 **/node_modules
 **/assets/js
+**/dev-docs
+**/distribution
 
 # Files #
 **/package-lock.json

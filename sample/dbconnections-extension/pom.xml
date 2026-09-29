@@ -6,9 +6,10 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
-		<groupId>iqb.jps.sample</groupId>
-		<artifactId>jpsapp-sample-project</artifactId>
+		<groupId>iqb.jps</groupId>
+		<artifactId>jpsapp-extension-parent</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
+		<relativePath>../../extension-parent/pom.xml</relativePath>
 	</parent>
 
 	<groupId>iqb.jps.sample</groupId>
@@ -19,6 +20,7 @@
 	<url>${parent.url}</url>
 
 	<properties>
+		<jps.extensions.bin>../../server-app/app/extensions/bin</jps.extensions.bin>
 		<distribute.extension>true</distribute.extension>
 	</properties>
 

@@ -7,15 +7,28 @@
 
 	<groupId>iqb.jps</groupId>
 	<artifactId>jaman-jpsapp-project-parent</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>${revision}</version>
 	<packaging>pom</packaging>
 
-	<name>JPSApp Project Parent-Aggregator</name>
-	<description>Jamn JPSApp Project Parent/Aggregator pom</description>
-	
+	<name>JPSApp Project Parent-Reactor</name>
+	<description>Jamn JPSApp Project Parent/Reactor pom</description>
+
 	<properties>
+		<!-- 
+		Top level build version - use e.g.: mvn -Drevision=1.0.0 clean install 
+		 -->
+		<revision>0.0.1-SNAPSHOT</revision>
+
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+		<local.distribution.repo.id>local-repo</local.distribution.repo.id>
+		<local.distribution.url>file:///C:/temp/maven-repository</local.distribution.url>
+
+		<!-- id must match a <server> definition in settings.xml -->
+		<remote.distribution.repo.id>iqbserve-repo</remote.distribution.repo.id>
+		<remote.distribution.repo.url>
+			sftp://iqbserve.de/var/www/vhosts/iqbserve.de/devrepo.iqbserve.de</remote.distribution.repo.url>
 
 		<junit.jupiter.version>6.0.3</junit.jupiter.version>
 
@@ -37,6 +50,33 @@
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
 	</properties>
+
+	<profiles>
+		<!-- Local deployment (active by default) -->
+		<profile>
+			<id>deploy-local</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<distributionManagement>
+				<repository>
+					<id>${local.distribution.repo.id}</id>
+					<url>${local.distribution.url}</url>
+				</repository>
+			</distributionManagement>
+		</profile>
+
+		<!-- Remote deployment -->
+		<profile>
+			<id>deploy-remote</id>
+			<distributionManagement>
+				<repository>
+					<id>${remote.distribution.repo.id}</id>
+					<url>${remote.distribution.repo.url}</url>
+				</repository>
+			</distributionManagement>
+		</profile>
+	</profiles>
 
 	<dependencyManagement>
 		<dependencies>
@@ -118,6 +158,43 @@
 	</dependencyManagement>
 
 	<build>
+		<extensions>
+			<extension>
+				<groupId>org.apache.maven.wagon</groupId>
+				<artifactId>wagon-ssh</artifactId>
+				<version>3.5.3</version>
+			</extension>
+		</extensions>
+
+		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>flatten-maven-plugin</artifactId>
+				<version>1.7.0</version>
+				<configuration>
+					<updatePomFile>true</updatePomFile>
+					<flattenMode>resolveCiFriendliesOnly</flattenMode>
+					<flattenedPomFilename>target/.flattened-pom.xml</flattenedPomFilename>
+				</configuration>
+				<executions>
+					<execution>
+						<id>flatten</id>
+						<phase>process-resources</phase>
+						<goals>
+							<goal>flatten</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>flatten.clean</id>
+						<phase>clean</phase>
+						<goals>
+							<goal>clean</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+
 		<pluginManagement>
 			<plugins>
 				<plugin>

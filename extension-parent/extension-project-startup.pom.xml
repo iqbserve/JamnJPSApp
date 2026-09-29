@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<!-- 
+		IMPORTANT
+		PUBLIC iqbserve dev artifact repository
+		is needed to fetch the parent poms and api artifacts
+		while NOT present in the local .m2 repository
+	-->
+	<repositories>
+		<repository>
+			<id>iqbserve-public-devrepo</id>
+			<url>https://devrepo.iqbserve.de</url>
+		</repository>
+	</repositories>
+
+	<!--
+		A startup pom for a JPSApp extension project
+	-->
+
+	<!-- Default parent POM for JPSApp extensions -->
+	<parent>
+		<groupId>iqb.jps</groupId>
+		<artifactId>jpsapp-extension-parent</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
+
+	<!-- YOUR extension values -->
+	<groupId>sample.mydomain</groupId>
+	<artifactId>my-jps-sample-extension</artifactId>
+	<name>my-jps-sample-extension</name>
+	<description>My jps-sample-extension</description>
+
+	<properties>
+		<!--
+			CHECK and if necessary ADJUST maven-antrun-plugin
+			set true to copy to extensions/bin 
+		-->
+		<do.distribution>false</do.distribution>
+	</properties>
+
+	<!-- 
+		extension API dependency - inherited from parent pom 
+		provided at runtime by the JPSApp
+	 -->
+	<dependencies>
+		<dependency>
+			<groupId>iqb.jps</groupId>
+			<artifactId>${jps.extension.api.artifactId}</artifactId>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<release>${java.version}</release>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<artifactId>maven-source-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<executions>
+					<execution>
+						<phase>install</phase>
+						<configuration>
+							<!-- 
+							default is the standard folder layout created by the JPSApp
+							relative to this pom.xml location: /extension/bin 
+							 -->
+							<target if="${do.distribution}">
+								<copy file="target/${project.artifactId}-${project.version}.jar"
+									tofile="${jps.extensions.bin}/${project.artifactId}-${project.version}.jar" />
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

@@ -2,17 +2,25 @@
 
 This module provides a Maven parent for standalone extension projects that target the JamnJPSApp runtime.
 
-Goal: build extension JARs without cloning or building the JamnJPSApp itself.
+The Goal is - building extensions (JARs) without cloning or building the JamnJPSApp project itself.
 
-## Java Extensions usage
+For development purpose there is a rudimentary public maven artifact repository at: <a href="https://devrepo.iqbserve.de/">IQBServe development artifact Repository</a>
 
-Extensions can realize any kind of user functionality. They can get called as "commands" with a string argument array. Or as WebServices with string serializable in- and output objects (see: JamnJPSApp /sample project). 
+```xml
+<repositories>
+  <repository>
+    <id>iqbserve-public-devrepo</id>
+    <url>https://devrepo.iqbserve.de</url>
+  </repository>
+</repositories>
+```
 
 ## Intended pom usage
 
-Use this parent pom in an external extension project:
+Use this parent pom in a external extension project:
 
 ```xml
+<!-- Default parent POM for JPSApp extensions -->
 <parent>
   <groupId>iqb.jps</groupId>
   <artifactId>jpsapp-extension-parent</artifactId>
@@ -20,73 +28,51 @@ Use this parent pom in an external extension project:
 </parent>
 ```
 
-If intendet or needed add a dependency to the JPSApp extension api (version managed by the parent):
+If needed add a dependency to the JPSApp extension api:
 
 ```xml
-<dependencies>
-  <dependency>
-    <groupId>iqb.jps</groupId>
-    <artifactId>${jps.extension.api.artifactId}</artifactId>
-    <scope>provided</scope>
-  </dependency>
-</dependencies>
+<dependency>
+  <groupId>iqb.jps</groupId>
+  <artifactId>${jps.extension.api.artifactId}</artifactId>
+  <scope>provided</scope>
+</dependency>
 ```
 
 ## Key Properties
 
-- `jps.target.app.version`: target JamnJPSApp version for extension compatibility
-- `jps.extension.api.artifactId`: core API artifact exposed to extension compile classpath (default: `jpsapp-core`)
-- `jps.extensions.bin`: destination path used by optional copy/deploy tasks
-
-External projects can override these properties in their own `pom.xml`.
-
-## External Extension pom Skeleton
-
 ```xml
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
+  <!-- the version reflects the JPSApp version -->
+  <jps.extension.api.version>${revision}</jps.extension.api.version>
 
-  <parent>
-    <groupId>iqb.jps</groupId>
-    <artifactId>jpsapp-extension-parent</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-  </parent>
+  <!-- the extension api is part of the core lib -->
+  <jps.extension.api.artifactId>jpsapp-core</jps.extension.api.artifactId>
 
-  <groupId>my.extensions</groupId>
-  <artifactId>my-jps-extension</artifactId>
-  <version>1.0.0</version>
+  <!-- this path reflects the runtime situation -->
+  <jps.extensions.bin>./extensions/bin</jps.extensions.bin>
 
-  <dependencies>
-    <dependency>
-      <groupId>iqb.jps</groupId>
-      <artifactId>${jps.extension.api.artifactId}</artifactId>
-      <scope>provided</scope>
-    </dependency>
-  </dependencies>
-</project>
 ```
 
 ## Runtime Deployment Model
 
-Once an extension is build copy the extension jar to the JPSApp root dir: /extensions/bin
+The "root" dir "./" is the directory where the JPSApp is started.
 
-Create a minimum extension json def file "extension-name.json" in root dir: /extensions
+Copy the extension jar to: ./extensions/bin
 
-The name part (extension-name) of this file will get the unique id name of the extension if NO name="my-name" is defined in the def file itself.
+Create a minimum extension json def file "extension-name.json" in: ./extensions
 
-  ```json
-  {
-      "binPath" : "./bin/extension-jar-file-name.jar",
-      "className" : "extension-java-class-name",
-      "runMethod" : "run"
-      ... 
-  }
+The name part ("extension-name".json) of the json definition file is the default unique id name for the extension - if NO name="my-name" is defined in the definition file itself.
+
+Minimal java extension definition file example:
+
+```json
+{
+  "binPath" : "./bin/extension-jar-file-name.jar",
+  "className" : "extension-java-class-name",
+    ... 
+}
 ```
 
-
-By default the App will load all extensions defined in the extensions root folder at startup. That is why extensions must im minimum provide a public constructor. The JPSApp extension api does NOT require a specific lifecycle from extensions. The only entry point is the instantiaton. The def file just provides a singleton=true/false property. 
+By default JPSApp will load all extensions defined in the extensions root folder at startup. That is why java extensions must im minimum provide a public constructor. The JPSApp extension api does NOT require a specific lifecycle from extensions. The entry point is the instantiaton. The def file just provides a singleton=true/false property. 
 
 ## WebApp customization interface
 
@@ -94,7 +80,7 @@ If the extension also is or provides a WebApp feature it has to get pluged into 
 
 The current mechanism for that is javascript based and requires javascript and json definitions as web resources. The basic entrypoint for this is the wb-extension-features.mjs file in the extensions root folder (NOT in the web-app project itself). The file is plugged into to the Web App and adds or configures objects and configurations.
 
-There are different ways to define and add such js code - but in the end they are all written to the wb-extension-features.mjs file. The file has a public area where code can be directly placed - and a placeholder which is the anchor for added and generated code. Normally, it is not necessary to edit this file — all necessary definitions can be created directly within or alongside the respective extensions and will then automatically end up in this file at runtime.
+There are several ways to define and add such js code - but in the end they are all written to the wb-extension-features.mjs file. The file has a public area where code can be directly placed - and a placeholder which is the anchor for added and generated code. Normally, it is not necessary to edit this file — all necessary definitions can be created directly within or alongside the respective extensions and will then automatically end up in this file at runtime.
 
 ```javascript
 import { Logger } from 'core/logging.mjs';

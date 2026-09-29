@@ -8,8 +8,7 @@
 	<parent>
 		<groupId>iqb.jps</groupId>
 		<artifactId>jaman-jpsapp-project-parent</artifactId>
-		<version>0.0.1-SNAPSHOT</version>
-		<relativePath>../pom.xml</relativePath>
+		<version>${revision}</version>
 	</parent>
 
 	<groupId>iqb.jps</groupId>
@@ -22,17 +21,24 @@
 	<url>https://github.com/iqbserve/JamnJPSApp</url>
 
 	<properties>
-		<jps.target.app.version>${project.version}</jps.target.app.version>
+		<!-- the version reflects the JPSApp version -->
+		<jps.extension.api.version>${revision}</jps.extension.api.version>
+		<!-- the extension api is part of the core lib -->
 		<jps.extension.api.artifactId>jpsapp-core</jps.extension.api.artifactId>
+
+		<!-- this path reflects the runtime situation -->
 		<jps.extensions.bin>./extensions/bin</jps.extensions.bin>
+
+		<iqbserve.public.devrepo.url>https://devrepo.iqbserve.de/</iqbserve.public.devrepo.url>
 	</properties>
 
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
 				<groupId>iqb.jps</groupId>
-				<artifactId>${jps.extension.api.artifactId}</artifactId>
-				<version>${jps.target.app.version}</version>
+				<!-- aid must be hard coded here because of flattern plugin -->
+				<artifactId>jpsapp-core</artifactId>
+				<version>${jps.extension.api.version}</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

@@ -18,9 +18,9 @@ How ever - it remains a playground for experimenting with techniques and designs
 <br>
 ### Workbench Web App - <a href="https://wbapp.iqbserve.de" target="_blank">Demo</a> - <a href="https://github.com/iqbserve/JamnJPSApp/tree/master/web-app" target="_blank">Project</a> 
 
-#### Download and test run
+#### Clone and test run
 
-Prerequisites are java 25 and maven 3.9 on the path
+Prerequisites are a JavaSE-25 runtime and for development a Maven 3.9 installation - both on the path.
 
 ```code
 $ git clone https://github.com/iqbserve/JamnJPSApp.git
@@ -32,4 +32,9 @@ open a browser window and call
 localhost:9090
 ```
 
+### Download a Snapshot Distribution
+
+From the IQBServer Artifact <a href="https://devrepo.iqbserve.de/" target="_blank">Development Repository</a> you can download a snapshot zip-file distribution. Just extract the zip file in a folder of your choice and call the run.cmd.
+
+<br>
 #### <a href="https://github.com/iqbserve/JamnJPSApp?tab=License-1-ov-file">Disclaimer</a>

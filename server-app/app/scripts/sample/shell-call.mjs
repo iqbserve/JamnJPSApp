@@ -4,10 +4,6 @@ import { LS, echo, sh, workspacePath, isOnUnix, ArgumentProcessor } from "tools.
 
 /**
  * A test script to play around.
- * 
- * Hint: this script is also called in a junit test
- * but the test will always be passed
- * 
  */
 let helpText = `
 Command Help:

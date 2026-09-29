@@ -8,13 +8,12 @@
 	<parent>
 		<groupId>iqb.jps</groupId>
 		<artifactId>jaman-jpsapp-project-parent</artifactId>
-		<version>0.0.1-SNAPSHOT</version>
+		<version>${revision}</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
 	<groupId>iqb.jps</groupId>
 	<artifactId>jaman-jpswebapp</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
 
 	<name>JPSApp Web App</name>
 	<description>The web application module for JPSApp</description>

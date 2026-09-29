@@ -75,7 +75,7 @@ public class AppConfig {
             "#Profile", "jps.profile" + "=app", "",
             "#HTTP Server port", "http.server.port=9090", "",
             "#CLI interface port", "cli.interface.port=9091", "",
-            "#CLI interface enabled", "cli.interface.enabled=" + FALSE, "",
+            "#CLI interface enabled", "cli.interface.enabled=" + TRUE, "",
             "#System Web files root folder\n#intended for the system web app\n#no drive letter, start with '/' = absolute path, else relative to jar or to start folder", "jps.web.root=" + WEB_FILE_ROOT, "",
             "#User Web files local folder\n#intended for web app customization\n#and extensions adding\n#no drive letter, start with '/' = absolute path, else relative to start folder\n#e.g. /my-local-path/user-http, user-http", "#jps.user.web.local.root=user-http", "",
             "#WebApp main Page", "jps.webapp.main.page=/workbench.html", "",
@@ -201,7 +201,7 @@ public class AppConfig {
     }
 
     public boolean isCliInterfaceEnabled() {
-        return Boolean.parseBoolean(props.getProperty("cli.interface.enabled", FALSE));
+        return Boolean.parseBoolean(props.getProperty("cli.interface.enabled", TRUE));
     }
     
     public String getScriptRoot() {

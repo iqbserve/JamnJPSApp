@@ -99,7 +99,7 @@ public class CliApp {
 
         commandRegistry.addCommand(new CliCommand<CmdCallContext>("connect", (cmdArgs, ctx) -> {
             if (!ctx.getServerConnection().isConnected() && !ctx.getServerConnection().connect()) {
-                return "Failed to connect. Probably the server is not started.";
+                return "Failed to connect. Probably the server is not started or jps application property 'cli.interface.enabled' is set to false.";
             }
             return null;
         }));
