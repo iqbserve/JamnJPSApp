@@ -63,7 +63,8 @@
 			"**/server-app/app/workspace/**"
 		],
 		"maven.excludedFolders": [
-			"**/server-app/app/workspace/**"
+			"**/server-app/app/workspace/**",
+			"**/distribution/resources/**"
 		],
 		"maven.view": "hierarchical",
 		"files.exclude": {
@@ -79,6 +80,26 @@
 			{
 				"alias": "Clean-install",
 				"command": "clean install"
+			},
+			{
+				"command": "flatten:clean",
+				"debug": false
+			},
+			{
+				"command": "deploy -Pdeploy-remote",
+				"debug": false
+			},
+			{
+				"command": "help:effective-pom",
+				"debug": false
+			},
+			{
+				"command": "wagon:upload-single",
+				"debug": false
+			},
+			{
+				"command": "package",
+				"debug": false
 			}
 		],
 		"js/ts.validate.enabled": true,
