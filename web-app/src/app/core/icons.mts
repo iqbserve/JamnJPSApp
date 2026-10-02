@@ -1,157 +1,163 @@
 /* Authored by iqbserve.de */
 
 /**
- * A module to centralize font icon usage.
+ * <pre>
+ * A module to centralize Font-Icon usage.
+ * 
+ * It provides icon metadata through function constants: 
+ * Icons.<name>() named with the icon's identifying name.
+ *  - Icons.<name>(): returns the icon's identifying name that is equal to <name>.
+ *  - Icons.<name>("class"): returns the classes as a string
+ * 
+ * or by using the public info functions: 
+ *  - getIconClasses(name) 
+ *  - getIconShapeClasses(name) 
+ *  - getIconClassString(name)
+ * </pre>
  */
 
+// bootstrap icon type classes
+const BI_TypeClasses = ["bi"];
+const GI_USE_CDN = false;
+// google icon type classes
+const GI_TypeClasses = GI_USE_CDN ? ["gi", "material-symbols-outlined"] : ["gi"];
+
+// icon definitions container
+const iconDefs: Record<string, IconDef> = {};
+
 /**
- * PUBLIC
+ * <pre>
+ * PUBLIC info functions
+ * Same as Icons.<name>(<param>).
+ * </pre>
  */
 export function getIconClasses(name: string): string[] {
-	return (iconClasses as Record<string, ReturnType<typeof createClassDef>>)[name][0] as string[];
+	return iconDefs[name].getIconClasses();
 }
 
 export function getIconShapeClasses(name: string): string[] {
-	return (iconClasses as Record<string, ReturnType<typeof createClassDef>>)[name][1] as string[];
+	return iconDefs[name].getIconShapeClasses();
 }
 
 export function getIconClassString(name: string): string {
-	if(isIconAvailable(name)) {
-		return (iconClasses as Record<string, ReturnType<typeof createClassDef>>)[name][0].join(" ");
+	if (iconDefs[name]) {
+		return iconDefs[name].getIconClassString();
 	}
 	return "";
 }
 
 
-function isIconAvailable(name: string): boolean {
-	return !!(iconClasses as Record<string, ReturnType<typeof createClassDef>>)[name];
-}
-
-/**
- * Icon CONSTANTS as functions
- */
-export const arwExpand = newConstantFunction("arwExpand");
-export const arwCollapse = newConstantFunction("arwCollapse");
-export const caretdown = newConstantFunction("caretdown");
-export const caretup = newConstantFunction("caretup");
-export const clipboardAdd = newConstantFunction("clipboardAdd");
-export const close = newConstantFunction("close");
-export const collapse = newConstantFunction("collapse");
-export const dlgmin = newConstantFunction("dlgmin");
-export const hchevron = newConstantFunction("hchevron");
-export const command = newConstantFunction("command");
-export const dashCollapse = newConstantFunction("dashCollapse");
-export const dotmenu = newConstantFunction("dotmenu");
-export const eraser = newConstantFunction("eraser");
-export const eye = newConstantFunction("eye");
-export const github = newConstantFunction("github");
-export const info = newConstantFunction("info");
-export const infoc = newConstantFunction("infoc");
-export const login = newConstantFunction("login");
-export const loginAction = newConstantFunction("loginAction");
-export const menu = newConstantFunction("menu");
-export const minusRemove = newConstantFunction("minusRemove");
-export const password = newConstantFunction("password");
-export const pin = newConstantFunction("pin");
-export const plusNew = newConstantFunction("plusNew");
-export const pencilNew = newConstantFunction("pencilNew");
-export const toggleExpand = newConstantFunction("toggleExpand");
-export const question = newConstantFunction("question");
-export const redo = newConstantFunction("redo");
-export const run = newConstantFunction("run");
-export const save = newConstantFunction("save");
-export const system = newConstantFunction("system");
-export const tableSort = newConstantFunction("tableSort");
-export const tools = newConstantFunction("tools");
-export const trash = newConstantFunction("trash");
-export const user = newConstantFunction("user");
-export const wkvSidePanel = newConstantFunction("wkvSidePanel");
-export const xRemove = newConstantFunction("xRemove");
-export const filetypeJS = newConstantFunction("filetypeJS");
-
-//google material icons
-export const gi_system = newConstantFunction("gi_system");
-export const gi_toggleExpand = newConstantFunction("gi_toggleExpand");
-
 /**
  * INTERNALS
  */
-/**
- * A constant icon function: called without args (or with "class") returns the icon name/class-string,
- * called with "classes" returns the individual css classes.
- */
-export type IconFn = {
-	(opt?: null): string;
-	(opt: "classes"): string[];
-	(opt: "class"): string;
-};
 
-function newConstantFunction(name: string): IconFn {
-	const fn = (opt: "classes" | "class" | null = null) => {
+/**
+ * The icon constants function type definition.
+ */
+type IconFn = (opt?: "class" | null) => string;
+
+/**
+ */
+function newIconConstant(name: string, shapes?: string[], typeClasses = BI_TypeClasses): IconFn {
+
+	if (!iconDefs[name] && shapes) {
+		iconDefs[name] = new IconDef(shapes, typeClasses);
+	}
+
+	const fn : IconFn = (opt: "class" | null = null) => {
 		if (!opt) {
 			return name;
-		} else if (opt === "classes") {
-			return getIconClasses(name);
-		} else if (opt === "class") {
-			return getIconClassString(name);
+		}  else if (opt === "class") {
+			return iconDefs[name].getIconClassString();
 		}
 		return name;
 	};
-	return fn as IconFn;
+	return fn;
 }
 
 /**
- * <name> = [[iconClasses], [shapeClasses]]
- * e.g. [["bi", "bi-person"], ["bi-person", "bi-person-check"]]
  */
-function createClassDef(shapes: string[], typeClasses = BI_TypeClasses) {
-	return Object.freeze([[...typeClasses, shapes[0]], Object.freeze(shapes)]);
+class IconDef {
+	#shapes: string[];
+	#typeClasses: string[];
+	// only the direct icon class name
+	#className: string;
+	// the complete class string
+	#classString: string;
+
+	constructor(shapes: string[], typeClasses = BI_TypeClasses) {
+		this.#className = shapes[0];
+		this.#shapes = shapes;
+		this.#typeClasses = typeClasses;
+
+		this.#classString = this.#typeClasses.join(" ") + " " + this.#className;
+	}
+
+	getIconClassString(): string {
+		return this.#classString;
+	}
+
+	getIconClasses(): string[] {
+		return [...this.#typeClasses, this.#className];
+	}
+
+	getIconShapeClasses(): string[] {
+		return this.#shapes;
+	}
 }
 
-const BI_TypeClasses = Object.freeze(["bi"]);
-const GI_TypeClasses = Object.freeze(["gi", "material-symbols-outlined"]);
+/**
+ * Icon function CONSTANTS definitions
+ */
+export const arwExpand = newIconConstant("arwExpand", ["bi-arrows-expand", ""]);
+export const arwCollapse = newIconConstant("arwCollapse", ["bi-arrows-collapse", ""]);
+export const caretdown = newIconConstant("caretdown", ["bi-caret-down", ""]);
+export const caretup = newIconConstant("caretup", ["bi-caret-up", ""]);
+export const clipboardAdd = newIconConstant("clipboardAdd", ["bi-clipboard-plus", ""]);
+export const close = newIconConstant("close", ["bi-x-lg", ""]);
 
-const iconClasses = Object.freeze({
-	arwExpand: createClassDef(["bi-arrows-expand", ""]),
-	arwCollapse: createClassDef(["bi-arrows-collapse", ""]),
-	caretdown: createClassDef(["bi-caret-down", ""]),
-	caretup: createClassDef(["bi-caret-up", ""]),
-	clipboardAdd: createClassDef(["bi-clipboard-plus", ""]),
-	close: createClassDef(["bi-x-lg", ""]),
-	collapse: createClassDef(["bi-chevron-bar-contract", "bi-chevron-bar-expand"]),
-	dlgmin: createClassDef(["bi-dash-lg", "bi-dash-lg"]),
-	hchevron: createClassDef(["bi-chevron-up", "bi-chevron-down"]),
-	command: createClassDef(["bi-command", ""]),
-	dashCollapse: createClassDef(["bi-dash-square", ""]),
-	dotmenu: createClassDef(["bi-three-dots-vertical", ""]),
-	eraser: createClassDef(["bi-eraser", ""]),
-	eye: createClassDef(["bi-eye", "bi-eye-slash"]),
-	github: createClassDef(["bi-github", ""]),
-	info: createClassDef(["bi-info-square", "bi-info-square-fill"]),
-	infoc: createClassDef(["bi-info-circle", "bi-info-circle-fill"]),
-	login: createClassDef(["bi-person", "bi-person-check"]),
-	loginAction: createClassDef(["bi-box-arrow-in-right", ""]),
-	menu: createClassDef(["bi-list", ""]),
-	minusRemove: createClassDef(["bi-dash-square", ""]),
-	password: createClassDef(["bi-key", ""]),
-	pin: createClassDef(["bi-pin", "bi-pin-angle"]),
-	plusNew: createClassDef(["bi-plus-square", ""]),
-	pencilNew: createClassDef(["bi-pencil-square", ""]),
-	toggleExpand: createClassDef(["bi-plus-square", "bi-dash-square"]),
-	question: createClassDef(["bi-question-square", "bi-question-square-fill"]),
-	redo: createClassDef(["bi-arrow-counterclockwise", ""]),
-	run: createClassDef(["bi-caret-right-square", ""]),
-	save: createClassDef(["bi-floppy", ""]),
-	system: createClassDef(["bi-laptop", ""]),
-	tableSort: createClassDef(["bi-arrow-down", "bi-arrow-up"]),
-	tools: createClassDef(["bi-tools", ""]),
-	trash: createClassDef(["bi-trash", ""]),
-	user: createClassDef(["bi-person", ""]),
-	wkvSidePanel: createClassDef(["bi-arrow-bar-left", "bi-arrow-bar-right"]),
-	xRemove: createClassDef(["bi-x-square", ""]),
-	filetypeJS: createClassDef(["bi-filetype-js", ""]),
+export const collapse = newIconConstant("collapse", ["bi-chevron-bar-contract", "bi-chevron-bar-expand"]);
+export const dlgmin = newIconConstant("dlgmin", ["bi-dash-lg", "bi-dash-lg"]);
+export const hchevron = newIconConstant("hchevron", ["bi-chevron-up", "bi-chevron-down"]);
 
-	//google material icons
-	gi_system: createClassDef(["gi-computer", ""], GI_TypeClasses),
-	gi_toggleExpand: createClassDef(["gi-expand-all", "gi-collapse-all"], GI_TypeClasses)
-});
+export const command = newIconConstant("command", ["bi-command", ""]);
+export const dashCollapse = newIconConstant("dashCollapse", ["bi-dash-square", ""]);
+export const dotmenu = newIconConstant("dotmenu", ["bi-three-dots-vertical", ""]);
+export const eraser = newIconConstant("eraser", ["bi-eraser", ""]);
+
+export const eye = newIconConstant("eye", ["bi-eye", "bi-eye-slash"]);
+export const github = newIconConstant("github", ["bi-github", ""]);
+
+export const info = newIconConstant("info", ["bi-info-square", "bi-info-square-fill"]);
+export const infoc = newIconConstant("infoc", ["bi-info-circle", "bi-info-circle-fill"]);
+export const login = newIconConstant("login", ["bi-person", "bi-person-check"]);
+export const loginAction = newIconConstant("loginAction", ["bi-box-arrow-in-right", ""]);
+
+export const menu = newIconConstant("menu", ["bi-list", ""]);
+export const minusRemove = newIconConstant("minusRemove", ["bi-dash-square", ""]);
+export const password = newIconConstant("password", ["bi-key", ""]);
+
+export const pin = newIconConstant("pin", ["bi-pin", "bi-pin-angle"]);
+export const plusNew = newIconConstant("plusNew", ["bi-plus-square", ""]);
+export const pencilNew = newIconConstant("pencilNew", ["bi-pencil-square", ""]);
+export const toggleExpand = newIconConstant("toggleExpand", ["bi-plus-square", "bi-dash-square"]);
+export const question = newIconConstant("question", ["bi-question-square", "bi-question-square-fill"]);
+
+export const redo = newIconConstant("redo", ["bi-arrow-counterclockwise", ""]);
+export const run = newIconConstant("run", ["bi-caret-right-square", ""]);
+export const save = newIconConstant("save", ["bi-floppy", ""]);
+export const system = newIconConstant("system", ["bi-laptop", ""]);
+export const tableSort = newIconConstant("tableSort", ["bi-arrow-down", "bi-arrow-up"]);
+
+export const tools = newIconConstant("tools", ["bi-tools", ""]);
+export const trash = newIconConstant("trash", ["bi-trash", ""]);
+export const user = newIconConstant("user", ["bi-person", ""]);
+export const wkvSidePanel = newIconConstant("wkvSidePanel", ["bi-arrow-bar-left", "bi-arrow-bar-right"]);
+export const xRemove = newIconConstant("xRemove", ["bi-x-square", ""]);
+export const filetypeJS = newIconConstant("filetypeJS", ["bi-filetype-js", ""]);
+
+//google material icons
+export const gi_system = newIconConstant("gi_system", ["gi-computer", ""], GI_TypeClasses);
+export const gi_toggleExpand = newIconConstant("gi_toggleExpand", ["gi-expand-all", "gi-collapse-all"], GI_TypeClasses);
+
+

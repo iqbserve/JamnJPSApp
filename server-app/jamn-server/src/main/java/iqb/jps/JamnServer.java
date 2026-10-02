@@ -652,7 +652,10 @@ public class JamnServer {
                     String[] params = parts[1].split("\\&");
                     for (String param : params) {
                         parts = param.split("=");
-                        parameter.put(parts[0], parts[1]);
+                        if(parts.length > 1) {
+                            parameter.put(parts[0], parts[1]);
+                        }
+                        // ignore parameters without value
                     }
                     request.setParameter(parameter);
                 }
@@ -1004,6 +1007,8 @@ public class JamnServer {
             public static final String IMAGE_PNG = "image/png";
             public static final String IMAGE_X_ICON = "image/x-icon";
             public static final String IMAGE_SVG_XML = "image/svg+xml";
+            public static final String FONT_WOFF = "font/woff";
+            public static final String FONT_WOFF2 = "font/woff2";
 
             public static final String NO_CACHE = "no-cache";
             public static final String NO_STORE = "no-store";
@@ -1561,6 +1566,10 @@ public class JamnServer {
                 } else {
                     type = FieldValue.IMAGE + path.substring(path.lastIndexOf(".") + 1, path.length());
                 }
+            }else if(path.endsWith(".woff")) {
+                type = FieldValue.FONT_WOFF;
+            }else if(path.endsWith(".woff2")) {
+                type = FieldValue.FONT_WOFF2;
             }
             return type;
         }

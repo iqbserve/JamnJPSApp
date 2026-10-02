@@ -93,7 +93,7 @@ export class WbStatusline extends HTMLElement {
             .addContainer((iconBar) => {
                 iconBar.class("wsl-item").style({ width: "50px", "margin-right": "5px", "text-align": "center" })
                     .add({ elemType: "a", varid: "gitLink" }, (gitLink) => {
-                        gitLink.class(Icons.github("classes"))
+                        gitLink.class(Icons.github("class").split(" "))
                             .attrib({ title: "Git repo", target: "GitHub_Repos" });
                     });
             });
