@@ -345,11 +345,11 @@ public class JamnServer {
                                     }
                                 } finally {
                                     clientSocket.close();
-                                    LOG.debug(String.format("%s %s %s %s %s",
+                                    LOG.debug(String.join("",
                                             comData.getOrDefault(SOCKET_IDTEXT, "unknown"),
-                                            "closed [" + (System.currentTimeMillis() - start) + "]",
-                                            "usage [" + comData.getOrDefault(SOCKET_USAGE, "") + "]",
-                                            "exp [" + comData.getOrDefault(SOCKET_EXCEPTION, "") + "]",
+                                            " closed [", System.currentTimeMillis() - start + "]",
+                                            " usage [", comData.getOrDefault(SOCKET_USAGE, ""), "]",
+                                            " exp [", comData.getOrDefault(SOCKET_EXCEPTION, ""), "] ",
                                             Thread.currentThread().getName()));
                                 }
                             }
@@ -522,8 +522,7 @@ public class JamnServer {
             // a usage counter for debugging purpose
             int usage = 0;
             try {
-                LOG.atDebug().log(() -> String.format("%s %s %s %s", socketIDText, "opened", socket.toString(),
-                        Thread.currentThread().getName()));
+                LOG.atDebug().log(() -> String.join(" ", socketIDText, "opened", socket.toString(), Thread.currentThread().getName()));
 
                 do {
                     keepAlive = false;
@@ -572,7 +571,7 @@ public class JamnServer {
                 // send 403 for any security exception
                 response.sendStatus(Status.SC_403_FORBIDDEN);
             } catch (HttpRequestTooLargeException e) {
-                LOG.warn(String.format("%s %s", socketIDText, e.getMessage()));
+                LOG.warn(String.join(" ", socketIDText, String.valueOf(usage), e.getMessage()));
                 response.sendStatus(e.getHttpStatus());
             } catch (Exception e) {
                 LOG.error(String.format("Request handling internal ERROR: %s", socketIDText), e);
@@ -652,7 +651,7 @@ public class JamnServer {
                     String[] params = parts[1].split("\\&");
                     for (String param : params) {
                         parts = param.split("=");
-                        if(parts.length > 1) {
+                        if (parts.length > 1) {
                             parameter.put(parts[0], parts[1]);
                         }
                         // ignore parameters without value
@@ -876,7 +875,7 @@ public class JamnServer {
 
         protected String encoding = StandardCharsets.UTF_8.name();
 
-        protected String[] statusline = new String[] { Field.HTTP_1_0, "" };
+        protected String[] statusline = { Field.HTTP_1_0, "" };
 
         protected Map<String, String> fieldMap = new LinkedHashMap<>();
         protected List<String> setCookies = null;
@@ -1511,7 +1510,7 @@ public class JamnServer {
          */
         protected String requestSummary() {
             String crlf = "\n";
-            String socketId = !contextData.isEmpty() ? contextData.remove(0) : "";
+            String socketId = contextData.isEmpty() ? "" : contextData.remove(0);
             StringBuilder text = new StringBuilder(crlf);
             text.append("<-- Request --> ").append(socketId).append(" - ").append(Thread.currentThread().getName())
                     .append(crlf)
@@ -1566,9 +1565,9 @@ public class JamnServer {
                 } else {
                     type = FieldValue.IMAGE + path.substring(path.lastIndexOf(".") + 1, path.length());
                 }
-            }else if(path.endsWith(".woff")) {
+            } else if (path.endsWith(".woff")) {
                 type = FieldValue.FONT_WOFF;
-            }else if(path.endsWith(".woff2")) {
+            } else if (path.endsWith(".woff2")) {
                 type = FieldValue.FONT_WOFF2;
             }
             return type;

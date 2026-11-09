@@ -90,6 +90,14 @@ export class WbStatusline extends HTMLElement {
             .addContainer({ varid: "infoText" }, (infoText) => {
                 infoText.class("wsl-item").style({ width: "100%", "user-select": "text" });
             })
+            .addContainer((links) => {
+                links
+                    .class("wsl-item").style({ "text-align": "right" })
+                    .addLink({ text: "Impressum" }, (link) => {
+                        link.class("wkv-link-ctrl").style({ "text-decoration": "none" })
+                        .attrib({ title: "IQBServe Impressum", href: "https://iqbserve.de/impressum/", target: "iqb_impressum"});
+                    });
+            })
             .addContainer((iconBar) => {
                 iconBar.class("wsl-item").style({ width: "50px", "margin-right": "5px", "text-align": "center" })
                     .add({ elemType: "a", varid: "gitLink" }, (gitLink) => {
